@@ -14,6 +14,7 @@ final class PomodoroWidget: NSView {
     private let resetButton = NSButton(title: "Reset", target: nil, action: nil)
     private var timer: Timer?
     private var phase: PomodoroPhase = .idle
+    private var lastPhase: PomodoroPhase = .idle
     private var secondsRemaining: Int = 0
 
     override init(frame: NSRect) {
@@ -49,6 +50,8 @@ final class PomodoroWidget: NSView {
         resetButton.target = self
         resetButton.action = #selector(doReset)
         addSubview(resetButton)
+
+        NotificationCenter.default.addObserver(self, selector: #selector(toggleStartPause), name: .togglePomodoro, object: nil)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -82,12 +85,11 @@ final class PomodoroWidget: NSView {
     }
 
     private func startOrResume() {
-        if phase == .idle || phase == .paused && phase != .focus && phase != .rest {
+        if phase == .idle {
             phase = .focus
             secondsRemaining = SettingsStore.shared.settings.pomodoro.focusMinutes * 60
         } else if phase == .paused {
-            // resume existing
-            phase = secondsRemaining > 0 ? .focus : .rest
+            phase = lastPhase
         }
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -97,7 +99,12 @@ final class PomodoroWidget: NSView {
     }
 
     private func pause() {
+        if phase != .paused {
+            lastPhase = phase
+        }
         phase = .paused
+        timer?.invalidate()
+        timer = nil
         updateDisplay()
     }
 

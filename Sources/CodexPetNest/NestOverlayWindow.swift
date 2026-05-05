@@ -42,6 +42,7 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
         isMovableByWindowBackground = false
 
         self.contentView = contentView
+        setupObservers()
 
         pollTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in
             self?.poll()
@@ -94,10 +95,7 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
         let result = reader.read()
 
         switch result {
-        case .unavailable:
-            showStandalone()
-
-        case .closed:
+        case .unavailable, .closed:
             if lastVisible {
                 orderOut(nil)
             }
@@ -105,6 +103,17 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
 
         case .open(let petBounds):
             showFollowing(petBounds: petBounds)
+        }
+    }
+
+    private func setupObservers() {
+        NotificationCenter.default.addObserver(forName: .toggleNestVisibility, object: nil, queue: .main) { [weak self] note in
+            let show = note.object as? Bool ?? true
+            if show {
+                self?.orderFront(nil)
+            } else {
+                self?.orderOut(nil)
+            }
         }
     }
 
@@ -244,7 +253,7 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
     }
 
     @objc func uploadPet() {
-        NSWorkspace.shared.open(URL(string: "https://codexpet.xyz/upload")!)
+        NSWorkspace.shared.open(URL(string: "https://codexpet.xyz/submit")!)
     }
 
     @objc func hideNest() {

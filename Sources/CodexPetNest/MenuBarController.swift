@@ -41,6 +41,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                                  keyEquivalent: ""))
         menu.addItem(.separator())
 
+        menu.addItem(NSMenuItem(title: NSLocalizedString("menu.checkUpdates", comment: ""),
+                                 action: #selector(MenuActionTarget.shared.checkForUpdates),
+                                 keyEquivalent: ""))
+        menu.addItem(.separator())
+
         menu.addItem(NSMenuItem(title: NSLocalizedString("menu.settings", comment: ""),
                                  action: #selector(MenuActionTarget.shared.openSettings),
                                  keyEquivalent: ","))
@@ -70,5 +75,33 @@ extension MenuActionTarget {
             SettingsStore.shared.save()
             for w in NSApp.windows where w is NestOverlayWindow { w.orderFront(nil) }
         }
+    }
+
+    @objc func checkForUpdates() {
+        let current = "0.1.0"
+        Task {
+            do {
+                let version = try await CodexPetAPI.shared.getVersion()
+                guard version.latestVersion != current else {
+                    await showAlert(title: "Up to Date", message: "CodexPet Nest \(current) is the latest version.")
+                    return
+                }
+                await showAlert(
+                    title: "Update Available",
+                    message: "Version \(version.latestVersion) is available.\n\nDownload from:\n\(version.downloadUrl ?? "https://codexpet.xyz")"
+                )
+            } catch {
+                await showAlert(title: "Update Check Failed", message: error.localizedDescription)
+            }
+        }
+    }
+
+    @MainActor
+    private func showAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.runModal()
     }
 }

@@ -24,6 +24,8 @@ final class CountdownWidget: NSView {
         setButton.action = #selector(openPicker)
         addSubview(setButton)
 
+        NotificationCenter.default.addObserver(self, selector: #selector(openPicker), name: .setCountdown, object: nil)
+
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.update()
         }

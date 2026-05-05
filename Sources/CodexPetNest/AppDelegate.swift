@@ -18,6 +18,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self, selector: #selector(handleOpenSettings),
             name: .openSettings, object: nil
         )
+
+        // Task { await checkVersionOnLaunch() }
+    }
+
+    private func checkVersionOnLaunch() async {
+        let current = "0.1.0"
+        do {
+            let version = try await CodexPetAPI.shared.getVersion()
+            guard version.latestVersion != current else { return }
+
+            await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = "Update Available"
+                alert.informativeText = "CodexPet Nest \(version.latestVersion) is available (you have \(current)).\n\nDownload from:\n\(version.downloadUrl ?? "https://codexpet.xyz")"
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "Open Download")
+                alert.addButton(withTitle: "Later")
+                if alert.runModal() == .alertFirstButtonReturn {
+                    if let urlStr = version.downloadUrl, let url = URL(string: urlStr) {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+        } catch {
+            // Silently ignore version check failures on launch
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -109,10 +135,24 @@ final class SettingsViewController: NSViewController {
 
     @objc private func saveSettings() {
         let p = SettingsStore.shared.settings.pomodoro
-        SettingsStore.shared.settings.showNest = showNestCheck.state == .on
+        let showWasOn = SettingsStore.shared.settings.showNest
+        let showIsOn = showNestCheck.state == .on
+        
+        SettingsStore.shared.settings.showNest = showIsOn
         SettingsStore.shared.settings.nestPosition = positionPopup.selectedItem?.title ?? "bottom"
         SettingsStore.shared.settings.pomodoro.focusMinutes = Int(focusField.stringValue) ?? p.focusMinutes
         SettingsStore.shared.settings.pomodoro.breakMinutes = Int(breakField.stringValue) ?? p.breakMinutes
         SettingsStore.shared.save()
+        
+        NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        
+        if showWasOn != showIsOn {
+            NotificationCenter.default.post(name: .toggleNestVisibility, object: showIsOn)
+        }
     }
+}
+
+extension Notification.Name {
+    static let settingsChanged = Notification.Name("CodexPetNest.settingsChanged")
+    static let toggleNestVisibility = Notification.Name("CodexPetNest.toggleNestVisibility")
 }

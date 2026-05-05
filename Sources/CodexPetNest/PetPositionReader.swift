@@ -67,19 +67,27 @@ final class PetPositionReader {
 }
 
 func screenForTopLeftRect(_ tlRect: NSRect) -> NSScreen? {
-    let center = NSPoint(x: tlRect.midX, y: tlRect.midY)
+    // Codex top-left (0,0) is top-left of primary screen.
+    // AppKit (0,0) is bottom-left of primary screen.
+    let primaryScreen = NSScreen.screens[0]
+    let primaryHeight = primaryScreen.frame.height
+    
+    // Convert tlRect center to AppKit global coordinates
+    let centerTl = NSPoint(x: tlRect.midX, y: tlRect.midY)
+    let centerAk = NSPoint(x: centerTl.x, y: primaryHeight - centerTl.y)
+    
     for screen in NSScreen.screens {
-        let sf = screen.frame
-        if sf.contains(center) {
+        if screen.frame.contains(centerAk) {
             return screen
         }
     }
+    
     var best: NSScreen?
     var bestDist: CGFloat = .infinity
     for screen in NSScreen.screens {
         let sf = screen.frame
-        let dx = max(0, max(sf.minX - center.x, center.x - sf.maxX))
-        let dy = max(0, max(sf.minY - center.y, center.y - sf.maxY))
+        let dx = max(0, max(sf.minX - centerAk.x, centerAk.x - sf.maxX))
+        let dy = max(0, max(sf.minY - centerAk.y, centerAk.y - sf.maxY))
         let dist = dx * dx + dy * dy
         if dist < bestDist {
             bestDist = dist
