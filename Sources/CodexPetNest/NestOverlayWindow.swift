@@ -52,7 +52,7 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
 
     override func rightMouseDown(with event: NSEvent) {
         let menu = buildMenu()
-        menu.popUp(positioning: nil, at: event.locationInWindow, in: nil)
+        NSMenu.popUpContextMenu(menu, with: event, for: self.contentView!)
     }
 
     override var canBecomeKey: Bool { false }
@@ -152,7 +152,7 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
         // If orbit mode, stay BEHIND the pet and allow all clicks to pass through
         if isOrbit {
             self.level = .normal
-            self.ignoresMouseEvents = true
+            self.ignoresMouseEvents = false
         } else {
             self.level = .floating
             self.ignoresMouseEvents = false

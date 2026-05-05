@@ -42,6 +42,19 @@ final class UsageOrbitRenderer: NSView {
         isHovering = false
     }
     
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        let dist = sqrt(pow(point.x - center.x, 2) + pow(point.y - center.y, 2))
+        
+        // Inner area (pet body) should pass through to allow clicking the pet
+        if dist < 40 {
+            return nil
+        }
+        
+        // Rings and outer area should capture right-click
+        return super.hitTest(point)
+    }
+    
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         trackingAreas.forEach { removeTrackingArea($0) }

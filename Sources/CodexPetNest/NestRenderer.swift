@@ -208,30 +208,6 @@ final class NestRenderer: NSView {
         }
         return NSSize(width: 220, height: 72)
     }
-
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        if isOrbitNest {
-            let center = NSPoint(x: bounds.midX, y: bounds.midY)
-            let dx = point.x - center.x
-            let dy = point.y - center.y
-            let dist = sqrt(dx*dx + dy*dy)
-            
-            // Inner ring is 52. Outer ring is 64.
-            // We want to allow clicks through if dist < 40 (central area where pet is).
-            if dist < 40 {
-                return nil // Click through to pet!
-            }
-            
-            // Also allow click through if dist > 85 (outside the nest area)
-            if dist > 85 {
-                return nil
-            }
-            
-            // Otherwise, let the widgets/renderer handle it (e.g. right click menu)
-            return super.hitTest(point)
-        }
-        return super.hitTest(point)
-    }
 }
 
 extension Notification.Name {
