@@ -14,7 +14,7 @@ struct Settings: Codable, Equatable {
     var countdownTarget: String?
     var pomodoro: PomodoroSettings = PomodoroSettings()
     var managedPetIds: [String] = []
-    var activeNestId: String = "default"
+    var activeNestId: String = "capacity-orbit-nest"
 }
 
 final class SettingsStore {
@@ -32,19 +32,29 @@ final class SettingsStore {
         settings = Settings()
 
         try? FileManager.default.createDirectory(at: supportDir, withIntermediateDirectories: true)
+        print("[SettingsStore] fileURL: \(fileURL.path)")
         load()
     }
 
     func load() {
-        guard let data = try? Data(contentsOf: fileURL),
-              let decoded = try? JSONDecoder().decode(Settings.self, from: data)
-        else { return }
-        settings = decoded
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let decoded = try JSONDecoder().decode(Settings.self, from: data)
+            settings = decoded
+            print("[SettingsStore] loaded activeNestId=\(settings.activeNestId)")
+        } catch {
+            print("[SettingsStore] load failed: \(error)")
+        }
     }
 
     func save() {
-        guard let data = try? JSONEncoder().encode(settings) else { return }
-        try? data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+        do {
+            let data = try JSONEncoder().encode(settings)
+            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+            print("[SettingsStore] saved activeNestId=\(settings.activeNestId)")
+        } catch {
+            print("[SettingsStore] save failed: \(error)")
+        }
     }
 
     func widgetEnabled(_ id: String) -> Bool {

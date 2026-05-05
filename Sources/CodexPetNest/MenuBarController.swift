@@ -47,6 +47,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(NSMenuItem(title: usageTitle,
                                  action: #selector(MenuActionTarget.toggleUsage),
                                  keyEquivalent: ""))
+        
+        menu.addItem(NSMenuItem(title: "Activate Orbit Mode (DEMO)",
+                                 action: #selector(MenuActionTarget.activateOrbitNest),
+                                 keyEquivalent: ""))
+        
         menu.addItem(.separator())
 
         menu.addItem(NSMenuItem(title: "Check for Updates...",
@@ -177,6 +182,26 @@ extension MenuActionTarget {
         SettingsStore.shared.save()
         for window in NSApp.windows where window is NestOverlayWindow {
             window.orderOut(nil)
+        }
+    }
+
+    @objc func activateOrbitNest() {
+        print("[MenuActionTarget] activateOrbitNest called")
+        SettingsStore.shared.settings.activeNestId = "capacity-orbit-nest"
+        SettingsStore.shared.save()
+        
+        // Verify save
+        SettingsStore.shared.load()
+        print("[MenuActionTarget] saved activeNestId=\(SettingsStore.shared.settings.activeNestId)")
+        
+        NotificationCenter.default.post(name: .activeNestChanged, object: nil)
+        NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        NotificationCenter.default.post(name: .nestSizeChanged, object: nil)
+        
+        if !SettingsStore.shared.settings.showNest {
+            SettingsStore.shared.settings.showNest = true
+            SettingsStore.shared.save()
+            for w in NSApp.windows where w is NestOverlayWindow { w.orderFront(nil) }
         }
     }
 }

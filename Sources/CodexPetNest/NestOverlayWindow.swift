@@ -52,9 +52,7 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
 
     override func rightMouseDown(with event: NSEvent) {
         let menu = buildMenu()
-        let loc = NSPoint(x: frame.minX + event.locationInWindow.x,
-                          y: frame.minY + event.locationInWindow.y)
-        menu.popUp(positioning: nil, at: loc, in: nil)
+        menu.popUp(positioning: nil, at: event.locationInWindow, in: nil)
     }
 
     override var canBecomeKey: Bool { false }
@@ -84,6 +82,11 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
                                  action: #selector(MenuActionTarget.browsePets), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Browse Nests",
                                  action: #selector(MenuActionTarget.browseNests), keyEquivalent: ""))
+        
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Activate Orbit Nest (Demo)",
+                                 action: #selector(MenuActionTarget.activateOrbitNest), keyEquivalent: ""))
+        
         menu.addItem(NSMenuItem(title: "Upload Pet",
                                  action: #selector(MenuActionTarget.uploadPet), keyEquivalent: ""))
         menu.addItem(.separator())
@@ -127,11 +130,10 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
     }
 
     private func updateSizeAndPosition() {
-        // Force a re-poll or just update if we have last bounds
-        // Since we don't have petBounds here, we wait for next poll
-        // But we should at least update the contentView frame
+        print("[NestOverlayWindow] updateSizeAndPosition called. currentSize: \(currentSize)")
         contentView?.frame = NSRect(origin: .zero, size: currentSize)
         modeLabel?.frame = NSRect(x: 0, y: 2, width: currentSize.width, height: 10)
+        poll()
     }
 
 
@@ -146,16 +148,22 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
             return
         }
 
-        let tlFrame = topLeftFrame(for: screen)
         let petAk = appKitRectFromTopLeft(petTl, screen: screen)
         let nestFrame = computeNestFrame(petFrame: petAk, screen: screen)
         
+        let isOrbit = SettingsStore.shared.settings.activeNestId == NestRenderer.orbitNestId
+        
+        // If orbit mode, stay BEHIND the pet and allow all clicks to pass through
+        if isOrbit {
+            self.level = .normal
+            self.ignoresMouseEvents = true
+        } else {
+            self.level = .floating
+            self.ignoresMouseEvents = false
+        }
+        
         #if DEBUG
-        print("[NestOverlay] raw top-left pet rect: \(petTl)")
-        print("[NestOverlay] selected screen.frame: \(screen.frame)")
-        print("[NestOverlay] selected topLeftFrame: \(tlFrame)")
-        print("[NestOverlay] converted AppKit pet rect: \(petAk)")
-        print("[NestOverlay] final nest frame: \(nestFrame)")
+        print("[NestOverlayWindow] petTl: \(petTl), petAk: \(petAk), nestFrame: \(nestFrame), level: \(level.rawValue)")
         #endif
         
         setFrame(nestFrame, display: true)
@@ -167,6 +175,15 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
     }
 
     private func computeNestFrame(petFrame: NSRect, screen: NSScreen) -> NSRect {
+        let activeId = SettingsStore.shared.settings.activeNestId
+        if activeId == NestRenderer.orbitNestId {
+            let size = currentSize
+            // Center the orbit nest on the pet
+            return NSRect(x: petFrame.midX - size.width / 2,
+                          y: petFrame.midY - size.height / 2,
+                          width: size.width, height: size.height)
+        }
+
         let pos = SettingsStore.shared.settings.nestPosition
         let sf = screen.visibleFrame
         let size = currentSize

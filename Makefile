@@ -16,6 +16,7 @@ $(EXEC): $(SOURCES)
 		-framework AppKit \
 		-framework Security \
 		-framework Foundation \
+		-D DEBUG \
 		-o $@ \
 		$(SOURCES)
 
@@ -42,6 +43,10 @@ app: release
 
 run: app
 	open "$(APP_BUNDLE)"
+
+dev: all
+	@echo "Starting app with console logging..."
+	./$(EXEC)
 
 clean:
 	rm -rf $(BUILD_DIR)

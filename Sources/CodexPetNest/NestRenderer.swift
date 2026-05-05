@@ -7,8 +7,11 @@ final class NestRenderer: NSView {
     private var usageWidget: UsageIndicatorWidget?
     private let cornerRadius: CGFloat = 16
     
+    private var orbitRenderer: UsageOrbitRenderer?
     private var layerViews: [NSImageView] = []
     private var activeNest: InstalledNest?
+
+    static let orbitNestId = "capacity-orbit-nest"
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -33,11 +36,34 @@ final class NestRenderer: NSView {
     override func layout() {
         super.layout()
         
-        if let nest = activeNest {
-            layoutCustom(nest)
+        let activeId = SettingsStore.shared.settings.activeNestId
+        let mode = isOrbitNest ? "orbit" : (activeNest != nil ? "custom" : "default")
+        #if DEBUG
+        print("[NestRenderer] Layout triggered. activeNestId: \(activeId), mode: \(mode), canvasSize: \(currentCanvasSize)")
+        #endif
+
+        if isOrbitNest {
+            orbitRenderer?.frame = bounds
+            orbitRenderer?.isHidden = false
+            
+            // Strictly hide all other UI
+            clockWidget?.isHidden = true
+            countdownWidget?.isHidden = true
+            pomodoroWidget?.isHidden = true
+            usageWidget?.isHidden = true
+            layerViews.forEach { $0.isHidden = true }
         } else {
-            layoutDefault()
+            orbitRenderer?.isHidden = true
+            if let nest = activeNest {
+                layoutCustom(nest)
+            } else {
+                layoutDefault()
+            }
         }
+    }
+    
+    private var isOrbitNest: Bool {
+        return SettingsStore.shared.settings.activeNestId == NestRenderer.orbitNestId
     }
     
     private func layoutDefault() {
@@ -51,11 +77,13 @@ final class NestRenderer: NSView {
             let w = availableWidth / CGFloat(normalWidgets.count)
             for (i, widget) in normalWidgets.enumerated() {
                 widget.frame = NSRect(x: CGFloat(i) * w, y: 0, width: w, height: bounds.height)
+                widget.isHidden = false
             }
         }
         
         if let usage = usage {
             usage.frame = NSRect(x: availableWidth, y: 0, width: usageWidth, height: bounds.height)
+            usage.isHidden = false
         }
     }
     
@@ -64,6 +92,7 @@ final class NestRenderer: NSView {
         for (i, layer) in nest.layout.layers.enumerated() {
             if i < layerViews.count {
                 layerViews[i].frame = layer.frame.cgRect
+                layerViews[i].isHidden = false
             }
         }
         
@@ -76,13 +105,6 @@ final class NestRenderer: NSView {
                 widget.frame = slot.cgRect
                 widget.isHidden = false
             } else {
-                // If no slot, we could either hide it or use default logic.
-                // The prompt says: "If slot missing, use default layout."
-                // But in a custom skin, default layout might look weird.
-                // Let's hide it for now if no slot is defined in a custom skin, 
-                // OR we can just append it at the end.
-                // Requirement: "If slot missing, use default layout."
-                // Since layoutCustom is called, we'll just hide it if not in slots to avoid overlap.
                 widget.isHidden = true
             }
         }
@@ -95,26 +117,39 @@ final class NestRenderer: NSView {
 
     func rebuildWidgets() {
         clockWidget?.removeFromSuperview()
+        clockWidget = nil
         countdownWidget?.removeFromSuperview()
+        countdownWidget = nil
         pomodoroWidget?.removeFromSuperview()
+        pomodoroWidget = nil
         usageWidget?.removeFromSuperview()
+        usageWidget = nil
+        orbitRenderer?.removeFromSuperview()
+        orbitRenderer = nil
 
-        if SettingsStore.shared.widgetEnabled("clock") {
-            clockWidget = ClockWidget(frame: .zero)
-            addSubview(clockWidget!)
+        // If in orbit mode, don't create default widgets at all
+        if isOrbitNest {
+            orbitRenderer = UsageOrbitRenderer(frame: bounds)
+            addSubview(orbitRenderer!)
+        } else {
+            if SettingsStore.shared.widgetEnabled("clock") {
+                clockWidget = ClockWidget(frame: .zero)
+                addSubview(clockWidget!)
+            }
+            if SettingsStore.shared.widgetEnabled("countdown") {
+                countdownWidget = CountdownWidget(frame: .zero)
+                addSubview(countdownWidget!)
+            }
+            if SettingsStore.shared.widgetEnabled("pomodoro") {
+                pomodoroWidget = PomodoroWidget(frame: .zero)
+                addSubview(pomodoroWidget!)
+            }
+            if SettingsStore.shared.widgetEnabled("usage") {
+                usageWidget = UsageIndicatorWidget(frame: .zero)
+                addSubview(usageWidget!)
+            }
         }
-        if SettingsStore.shared.widgetEnabled("countdown") {
-            countdownWidget = CountdownWidget(frame: .zero)
-            addSubview(countdownWidget!)
-        }
-        if SettingsStore.shared.widgetEnabled("pomodoro") {
-            pomodoroWidget = PomodoroWidget(frame: .zero)
-            addSubview(pomodoroWidget!)
-        }
-        if SettingsStore.shared.widgetEnabled("usage") {
-            usageWidget = UsageIndicatorWidget(frame: .zero)
-            addSubview(usageWidget!)
-        }
+        
         needsLayout = true
     }
 
@@ -124,6 +159,8 @@ final class NestRenderer: NSView {
     }
     
     @objc private func activeNestChanged() {
+        let activeId = SettingsStore.shared.settings.activeNestId
+        print("[NestRenderer] activeNestChanged. activeId: \(activeId)")
         activeNest = LocalNestManager.shared.getActiveNest()
         
         // Clear old layers
@@ -144,11 +181,16 @@ final class NestRenderer: NSView {
         
         NotificationCenter.default.post(name: .nestSizeChanged, object: nil)
         updateAppearance()
+        rebuildWidgets() // Force rebuild to switch orbit/default mode
         needsLayout = true
     }
     
     private func updateAppearance() {
-        if activeNest != nil {
+        if isOrbitNest {
+            // Strictly transparent background for orbit
+            layer?.backgroundColor = NSColor.clear.cgColor
+            layer?.cornerRadius = 0
+        } else if activeNest != nil {
             layer?.backgroundColor = NSColor.clear.cgColor
             layer?.cornerRadius = 0
         } else {
@@ -158,10 +200,38 @@ final class NestRenderer: NSView {
     }
 
     var currentCanvasSize: NSSize {
+        if isOrbitNest {
+            return NSSize(width: 260, height: 260)
+        }
         if let nest = activeNest {
             return NSSize(width: nest.layout.canvas.width, height: nest.layout.canvas.height)
         }
         return NSSize(width: 220, height: 72)
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        if isOrbitNest {
+            let center = NSPoint(x: bounds.midX, y: bounds.midY)
+            let dx = point.x - center.x
+            let dy = point.y - center.y
+            let dist = sqrt(dx*dx + dy*dy)
+            
+            // Outer ring radius is 110, tick marks extend to ~126.
+            // Inner ring is 94. 
+            // We want to allow clicks through if dist < 80 (central area where pet is).
+            if dist < 80 {
+                return nil // Click through to pet!
+            }
+            
+            // Also allow click through if dist > 140 (outside the nest area)
+            if dist > 140 {
+                return nil
+            }
+            
+            // Otherwise, let the widgets/renderer handle it (e.g. right click menu)
+            return super.hitTest(point)
+        }
+        return super.hitTest(point)
     }
 }
 

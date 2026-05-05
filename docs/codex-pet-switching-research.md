@@ -1,10 +1,8 @@
 # Codex Pet Switching Research
 
-Status: research complete for MVP planning.
+Status: research complete.
 
-Decision for Sprint 2: ship guided switching first. Do not automatically change
-the active Codex pet. Manual validation showed that external writes to Codex's
-global state file do not switch the live pet and are overwritten by Codex.
+Final Decision for v0.1: Keep switching guided. Do not automatically change the active Codex pet. External writes to Codex's state files are unsafe and unstable.
 
 ## What Was Observed
 

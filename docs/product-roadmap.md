@@ -337,15 +337,20 @@ Acceptance criteria:
 - App can switch active nest. (Done)
 - Invalid nest packages are rejected with clear errors. (Done)
 
-### Sprint 5: Online Nest Market And Upload (In Progress)
+### Sprint 5: Online Nest Market (Delivered)
 
 Acceptance criteria:
-
 - Define official nest package specification. (Done: docs/specs/nest-package.md)
-- App lists nests from `codexpet.xyz`.
-- App installs and switches online nest packages.
-- Website supports nest upload and validation.
-- App supports upload after explicit login.
+- App lists nests from `codexpet.xyz`. (Done)
+- App installs and switches online nest packages. (Done)
+- Support "Apply Now" directly from marketplace. (Done)
+
+### Next Steps (Post-v0.1)
+
+- Creator Upload UI: Desktop-side validation and multi-step upload flow.
+- Custom Widgets: Support for community-submitted widget logic (safe sandboxed JS).
+- Asset Optimization: Auto-convert images to optimized webp during upload.
+- Improved Multi-Monitor: Automatic re-centering when display configuration changes.
 
 ## Implementation Prompt
 

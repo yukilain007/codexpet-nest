@@ -106,7 +106,9 @@ final class LocalNestManager {
     
     func getActiveNest() -> InstalledNest? {
         let activeId = SettingsStore.shared.settings.activeNestId
-        if activeId == "default" { return nil }
+        if activeId == "default" || activeId == NestRenderer.orbitNestId {
+            return nil
+        }
         
         if let nest = installedNests.first(where: { $0.id == activeId }) {
             return nest
