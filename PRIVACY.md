@@ -15,9 +15,9 @@ CodexPet Nest is designed to be transparent about what it reads and sends.
 | File / Directory | Reason |
 | --- | --- |
 | `~/Library/Application Support/CodexPet Nest/settings.json` | Persist user preferences (nest position, theme, widget settings, timer state). |
-| `${CODEX_HOME:-$HOME/.codex}/pets/` | Install and remove pet packages (Phase 2+). Only happens on explicit user action. |
-| `~/Library/Application Support/CodexPet Nest/library.json` | Track installed pets and nests (Phase 2+). |
-| `~/Library/Application Support/CodexPet Nest/logs/` | Application logs (Phase 2+). |
+| `${CODEX_HOME:-$HOME/.codex}/pets/` | Install and remove pet packages. These contain only static assets (images/JSON) and do not execute code. |
+| `~/Library/Application Support/CodexPet Nest/nests/` | Install and remove nest skin packages. These are static resource packs (images/JSON) that do not execute code or scripts. |
+| `~/Library/Application Support/CodexPet Nest/tmp/` | Temporary directory for package extraction and validation. |
 
 ## Network
 

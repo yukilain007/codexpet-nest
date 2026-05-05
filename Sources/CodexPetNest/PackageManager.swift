@@ -244,27 +244,62 @@ final class PackageManager {
                 throw PackageManagerError.missingRequiredFile("pet.json spritesheetPath")
             }
         } else if type == .nest {
-            let layoutFile = manifest.layout ?? "nest.json"
-            try validateFileExists(in: packageRoot, path: layoutFile, label: "Nest Layout (nest.json)")
+            guard let layoutFile = manifest.layout else {
+                 throw PackageManagerError.invalidManifest("Missing 'layout' field in codexpet-package.json")
+            }
+            guard layoutFile == "nest.json" else {
+                 throw PackageManagerError.invalidManifest("Layout field must be 'nest.json'")
+            }
+            try validateFileExists(in: packageRoot, path: "nest.json", label: "Nest Layout (nest.json)")
             
-            let layoutURL = packageRoot.appendingPathComponent(layoutFile)
+            let layoutURL = packageRoot.appendingPathComponent("nest.json")
             let layoutData = try Data(contentsOf: layoutURL)
-            let layout = try JSONDecoder().decode(NestLayout.self, from: layoutData)
-            
-            guard layout.canvas.width > 0 && layout.canvas.height > 0 else {
-                throw PackageManagerError.invalidManifest("Canvas width/height must be > 0")
-            }
-            if layout.canvas.width > 2048 || layout.canvas.height > 2048 {
-                throw PackageManagerError.invalidManifest("Canvas size exceeds limit (2048)")
+            let layout: NestLayout
+            do {
+                layout = try JSONDecoder().decode(NestLayout.self, from: layoutData)
+            } catch {
+                throw PackageManagerError.invalidManifest("Failed to parse nest.json: \(error.localizedDescription)")
             }
             
+            // Canvas validation
+            guard layout.canvas.width > 0 && layout.canvas.height > 0 && 
+                  layout.canvas.width.isFinite && layout.canvas.height.isFinite else {
+                throw PackageManagerError.invalidManifest("Canvas width/height must be positive finite numbers")
+            }
+            if layout.canvas.width > 1024 || layout.canvas.height > 1024 {
+                throw PackageManagerError.invalidManifest("Canvas size exceeds limit (1024x1024)")
+            }
+            
+            // Layers validation
             for layer in layout.layers {
                 guard layer.type == "image" else {
-                    throw PackageManagerError.unsafeContent("Unsupported layer type: \(layer.type)")
+                    throw PackageManagerError.unsafeContent("Unsupported layer type: \(layer.type). V1 only supports 'image'.")
+                }
+                // Path safety is already checked in validateFileExists, but we double check src specifically
+                if layer.src.contains("..") || layer.src.hasPrefix("/") {
+                    throw PackageManagerError.pathTraversal("Layer src: \(layer.src)")
                 }
                 try validateFileExists(in: packageRoot, path: layer.src, label: "Layer asset (\(layer.id))")
-                guard layer.frame.width > 0 && layer.frame.height > 0 else {
-                    throw PackageManagerError.invalidManifest("Layer frame width/height must be > 0")
+                
+                guard layer.frame.width > 0 && layer.frame.height > 0 &&
+                      layer.frame.x.isFinite && layer.frame.y.isFinite &&
+                      layer.frame.width.isFinite && layer.frame.height.isFinite else {
+                    throw PackageManagerError.invalidManifest("Layer frame (\(layer.id)) must have positive finite dimensions")
+                }
+            }
+            
+            // Widget slots validation
+            let allowedWidgets = ["usage", "clock", "countdown", "pomodoro"]
+            if let slots = layout.widgetSlots {
+                for (id, rect) in slots {
+                    guard allowedWidgets.contains(id) else {
+                        throw PackageManagerError.invalidManifest("Unauthorized widget slot: \(id). Allowed: \(allowedWidgets.joined(separator: ", "))")
+                    }
+                    guard rect.width > 0 && rect.height > 0 &&
+                          rect.x.isFinite && rect.y.isFinite &&
+                          rect.width.isFinite && rect.height.isFinite else {
+                        throw PackageManagerError.invalidManifest("Widget slot (\(id)) must have positive finite dimensions")
+                    }
                 }
             }
         }

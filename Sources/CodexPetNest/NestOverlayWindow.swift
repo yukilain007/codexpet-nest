@@ -7,11 +7,12 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
     private var lastVisible = false
     private var modeLabel: NSTextField?
 
-    private static let nestSize = NSSize(width: 220, height: 72)
     private let gap: CGFloat = 8
+    private var currentSize: NSSize { renderer.currentCanvasSize }
 
     init() {
-        let contentView = NSView(frame: NSRect(origin: .zero, size: Self.nestSize))
+        let initialSize = NSSize(width: 220, height: 72)
+        let contentView = NSView(frame: NSRect(origin: .zero, size: initialSize))
         renderer = NestRenderer(frame: contentView.bounds)
         renderer.autoresizingMask = [.width, .height]
         contentView.addSubview(renderer)
@@ -20,13 +21,13 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
         label.font = .systemFont(ofSize: 9)
         label.textColor = .white.withAlphaComponent(0.35)
         label.alignment = .center
-        label.frame = NSRect(x: 0, y: 2, width: Self.nestSize.width, height: 10)
+        label.frame = NSRect(x: 0, y: 2, width: initialSize.width, height: 10)
         label.isHidden = true
         contentView.addSubview(label)
         modeLabel = label
 
         super.init(
-            contentRect: NSRect(origin: .zero, size: Self.nestSize),
+            contentRect: NSRect(origin: .zero, size: initialSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -120,6 +121,17 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
                 self?.orderOut(nil)
             }
         }
+        NotificationCenter.default.addObserver(forName: .nestSizeChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.updateSizeAndPosition()
+        }
+    }
+
+    private func updateSizeAndPosition() {
+        // Force a re-poll or just update if we have last bounds
+        // Since we don't have petBounds here, we wait for next poll
+        // But we should at least update the contentView frame
+        contentView?.frame = NSRect(origin: .zero, size: currentSize)
+        modeLabel?.frame = NSRect(x: 0, y: 2, width: currentSize.width, height: 10)
     }
 
 
@@ -157,7 +169,7 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
     private func computeNestFrame(petFrame: NSRect, screen: NSScreen) -> NSRect {
         let pos = SettingsStore.shared.settings.nestPosition
         let sf = screen.visibleFrame
-        let size = Self.nestSize
+        let size = currentSize
 
         func rectFor(_ candidate: String) -> NSRect {
             switch candidate {

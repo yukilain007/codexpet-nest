@@ -140,9 +140,9 @@ final class NestRenderer: NSView {
                     layerViews.append(iv)
                 }
             }
-            // Resize host window if needed? No, prompt says don't change window logic.
         }
         
+        NotificationCenter.default.post(name: .nestSizeChanged, object: nil)
         updateAppearance()
         needsLayout = true
     }
@@ -156,4 +156,15 @@ final class NestRenderer: NSView {
             layer?.cornerRadius = cornerRadius
         }
     }
+
+    var currentCanvasSize: NSSize {
+        if let nest = activeNest {
+            return NSSize(width: nest.layout.canvas.width, height: nest.layout.canvas.height)
+        }
+        return NSSize(width: 220, height: 72)
+    }
+}
+
+extension Notification.Name {
+    static let nestSizeChanged = Notification.Name("nestSizeChanged")
 }

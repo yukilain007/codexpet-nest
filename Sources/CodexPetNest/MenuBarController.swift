@@ -136,7 +136,7 @@ extension MenuActionTarget {
     }
 
     @objc func browseNests() {
-        NSWorkspace.shared.open(URL(string: "https://codexpet.xyz/nests")!)
+        OnlineNestMarketplaceWindowController.shared.show()
     }
 
     @objc func uploadPet() {
