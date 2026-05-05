@@ -60,42 +60,38 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu(title: "CodexPet Nest")
-
-        menu.addItem(NSMenuItem(title: "Open Nest",
-                                 action: #selector(MenuActionTarget.openNest), keyEquivalent: ""))
+        let activeId = SettingsStore.shared.settings.activeNestId
+        
+        let classicItem = NSMenuItem(title: "Use Classic Nest",
+                                     action: #selector(MenuActionTarget.activateClassicNest),
+                                     keyEquivalent: "")
+        classicItem.state = activeId == "default" ? .on : .off
+        menu.addItem(classicItem)
+        
+        let orbitItem = NSMenuItem(title: "Use Capacity Orbit Nest",
+                                   action: #selector(MenuActionTarget.activateOrbitNest),
+                                   keyEquivalent: "")
+        orbitItem.state = activeId == "capacity-orbit-nest" ? .on : .off
+        menu.addItem(orbitItem)
+        
         menu.addItem(.separator())
-
-        menu.addItem(NSMenuItem(title: "Toggle Pomodoro",
-                                       action: #selector(MenuActionTarget.togglePomodoro), keyEquivalent: ""))
-
-        menu.addItem(NSMenuItem(title: "Set Countdown",
-                                 action: #selector(MenuActionTarget.setCountdown), keyEquivalent: ""))
+        
+        menu.addItem(NSMenuItem(title: "Toggle Pomodoro", action: #selector(MenuActionTarget.togglePomodoro), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Set Countdown", action: #selector(MenuActionTarget.setCountdown), keyEquivalent: ""))
         
         let usageEnabled = SettingsStore.shared.widgetEnabled("usage")
         let usageTitle = usageEnabled ? "Hide Usage Indicator" : "Show Usage Indicator"
-        menu.addItem(NSMenuItem(title: usageTitle,
-                                 action: #selector(MenuActionTarget.toggleUsage), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: usageTitle, action: #selector(MenuActionTarget.toggleUsage), keyEquivalent: ""))
         
         menu.addItem(.separator())
-
-        menu.addItem(NSMenuItem(title: "Browse Pets",
-                                 action: #selector(MenuActionTarget.browsePets), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Browse Nests",
-                                 action: #selector(MenuActionTarget.browseNests), keyEquivalent: ""))
+        
+        menu.addItem(NSMenuItem(title: "Browse Pets", action: #selector(MenuActionTarget.browsePets), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Browse Nests", action: #selector(MenuActionTarget.browseNests), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Settings", action: #selector(MenuActionTarget.openSettings), keyEquivalent: ""))
         
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Activate Orbit Nest (Demo)",
-                                 action: #selector(MenuActionTarget.activateOrbitNest), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Quit CodexPet Nest", action: #selector(NSApplication.terminate), keyEquivalent: "q"))
         
-        menu.addItem(NSMenuItem(title: "Upload Pet",
-                                 action: #selector(MenuActionTarget.uploadPet), keyEquivalent: ""))
-        menu.addItem(.separator())
-
-        menu.addItem(NSMenuItem(title: "Hide Nest",
-                                 action: #selector(MenuActionTarget.hideNest), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Settings",
-                                 action: #selector(MenuActionTarget.openSettings), keyEquivalent: ""))
-
         menu.items.forEach { $0.target = MenuActionTarget.shared }
         return menu
     }

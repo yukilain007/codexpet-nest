@@ -17,7 +17,15 @@ README.md               # (可选) 说明文档
 LICENSE                 # (可选) 许可证
 ```
 
-## 2. codexpet-package.json
+## 2. 内置动态渲染器 (Built-in Dynamic Renderers)
+
+虽然大多数小窝是基于 `nest.json` 的静态配置，但 CodexPet Nest 支持官方内置的动态渲染器。这些渲染器直接在 Swift 代码中实现，以获得更高的性能和复杂的交互能力（如实时圆环）。
+
+目前支持的内置 ID：
+- `default`: 经典的横条式小窝。
+- `capacity-orbit-nest`: 围绕宠物的动态 Usage 圆环。
+
+## 3. codexpet-package.json
 
 定义包的基本属性。
 

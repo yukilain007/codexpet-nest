@@ -232,6 +232,7 @@ Start with `usage` as the first fully supported functional slot.
 Renderer direction:
 
 - Replace the current fixed horizontal widget layout with a layout-driven renderer.
+- **Built-in Renderers**: Support first-party dynamic renderers like `capacity-orbit-nest` for performance-critical UI.
 - Draw static background assets first.
 - Place widget views by slot rect.
 - Clamp or reject slots outside the declared nest size.

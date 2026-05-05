@@ -14,7 +14,7 @@ struct Settings: Codable, Equatable {
     var countdownTarget: String?
     var pomodoro: PomodoroSettings = PomodoroSettings()
     var managedPetIds: [String] = []
-    var activeNestId: String = "capacity-orbit-nest"
+    var activeNestId: String = "default"
 }
 
 final class SettingsStore {

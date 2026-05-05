@@ -73,7 +73,7 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
     // MARK: - TableView
     
     func numberOfRows(in tableView: NSTableView) -> Int {
-        return nests.count + 1 // +1 for "Default"
+        return nests.count + 2 // +2 for "Default" and "Capacity Orbit"
     }
     
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -140,8 +140,8 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         let currentNestId = SettingsStore.shared.settings.activeNestId
         
         if row == 0 {
-            titleLabel.stringValue = "Default Nest"
-            authorLabel.stringValue = "Built-in"
+            titleLabel.stringValue = "Classic Nest"
+            authorLabel.stringValue = "Built-in / Default"
             iconView.image = NSImage(named: NSImage.applicationIconName)
             useBtn.tag = -1
             menuBtn.tag = -1
@@ -150,8 +150,19 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
                 activeLabel.isHidden = false
                 useBtn.isEnabled = false
             }
+        } else if row == 1 {
+            titleLabel.stringValue = "Capacity Orbit Nest"
+            authorLabel.stringValue = "Built-in / Official"
+            iconView.image = NSImage(named: NSImage.networkName)
+            useBtn.tag = -2
+            menuBtn.tag = -2
+            menuBtn.isEnabled = false
+            if currentNestId == "capacity-orbit-nest" {
+                activeLabel.isHidden = false
+                useBtn.isEnabled = false
+            }
         } else {
-            let nest = nests[row - 1]
+            let nest = nests[row - 2]
             titleLabel.stringValue = nest.name
             authorLabel.stringValue = "v\(nest.version) by \(nest.author)"
             if let pURL = nest.previewURL {
@@ -159,8 +170,8 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
             } else {
                 iconView.image = NSImage(named: NSImage.networkName)
             }
-            useBtn.tag = row - 1
-            menuBtn.tag = row - 1
+            useBtn.tag = row - 2
+            menuBtn.tag = row - 2
             if currentNestId == nest.id {
                 activeLabel.isHidden = false
                 useBtn.isEnabled = false
@@ -180,6 +191,8 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         let id: String
         if sender.tag == -1 {
             id = "default"
+        } else if sender.tag == -2 {
+            id = "capacity-orbit-nest"
         } else {
             id = nests[sender.tag].id
         }
