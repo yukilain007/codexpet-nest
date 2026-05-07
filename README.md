@@ -81,7 +81,7 @@ CodexPet Nest 是 [codexpet.xyz](https://codexpet.xyz) 的 macOS 桌面伴侣应
 
 #### 快速开始
 
-```bash
+`````bash
 # 克隆仓库
 git clone https://github.com/RyanNiu/codexpet-nest.git
 cd codexpet-nest
@@ -107,116 +107,6 @@ make clean
 # 生成发布安装包 (DMG)
 make dmg
 
-### 发布指南
-
-本项目已配置 GitHub Actions 自动发布。详细流程请参考 [发布与打标签指南](docs/RELEASE_GUIDE.md)。
-
-当你准备发布新版本时：
-1. 修改 `Resources/Info.plist` 中的版本号。
-2. 提交代码并打上版本标签：
-   ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-3. GitHub 会自动触发构建任务并生成 `.dmg` 安装包。
-3. GitHub 会自动触发构建任务，编译代码、打包素材并生成 `.dmg` 安装包，最后自动发布到项目的 Releases 页面。
-```
-
-#### Make 目标说明
-
-| 命令                | 说明                                                |
-| ------------------- | --------------------------------------------------- |
-| `make` / `make all` | 编译 debug 版本（二进制路径 `.build/CodexPetNest`） |
-| `make debug`        | 等同于 `make`（debug 构建）                         |
-| `make release`      | 编译 release 版本（开启 `-O` 优化）                 |
-| `make app`          | 编译 release 并打包为 `CodexPet Nest.app`           |
-| `make run`          | 打包 app 并启动                                     |
-| `make clean`        | 删除 `.build/` 目录                                 |
-
-#### 为什么不用 Swift Package Manager？
-
-当前环境的 SPM 存在 toolchain 兼容性问题（`PackageDescription` 符号未定义），因此本项目使用 `Makefile` + 直接 `swiftc` 编译。Makefile 会自动处理源文件发现、framework 链接和 SDK 路径。
-
-如需恢复 SPM 构建，请确保 Swift toolchain 版本 ≥ 6.0 且 CLT 完整安装。
-
-### 开发常用指令
-
-```bash
-# ─── 构建 & 运行 ──────────────────────────────
-
-make                      # 编译 debug 版本（开发时最常用）
-make app                  # 打包为 .app（发布前验证）
-make run                  # 打包并启动（完整功能验证）
-make clean && make dev    # 清理后重新编译
-
-# ─── 测试 API（需要先启动 codexpet 网站 dev server） ───
-
-# 版本检查
-curl -s https://codexpet.xyz/api/desktop/version | jq
-
-# 宠物列表
-curl -s "https://codexpet.xyz/api/pets?page=1" -H "Accept: application/json" | jq
-
-# 宠物详情
-curl -s "https://codexpet.xyz/api/pets/codie" -H "Accept: application/json" | jq
-
-# 宠物下载元数据
-curl -s "https://codexpet.xyz/api/pets/codie/download" -H "Accept: application/json" | jq
-
-# Nest 列表
-curl -s "https://codexpet.xyz/api/nests?page=1" -H "Accept: application/json" | jq
-
-# 设备码申请（POST）
-curl -s -X POST https://codexpet.xyz/api/auth/device-code \
-  -H "Content-Type: application/json" \
-  -d '{"client":"codexpet-nest","platform":"macos"}' | jq
-
-# ─── 本地开发（两个仓库联动） ──────────────────
-
-# 1. 启动 codexpet 网站 dev server（另一个终端）
-cd /path/to/codexpet
-npm run dev &
-
-# 2. 构建 nest app
-cd /path/to/codexpet-nest
-make run
-
-# 3. 观察日志
-# app 的控制台输出可在终端或「控制台.app」中查看
-# 如果 API 不通，检查 next.config.ts 中 rewrites 的目标端口
-
-# ─── 调试 ──────────────────────────────────────
-
-# 查看编译详情（含 warning）
-make clean && make 2>&1
-
-# 单独编译某个文件测试语法
-xcrun swiftc -sdk $(xcrun --show-sdk-path) -typecheck Sources/CodexPetNest/CodexPetAPI.swift
-
-# 检查 app bundle 结构
-ls -R ".build/CodexPet Nest.app/Contents"
-
-# View runtime logs
-log stream --predicate 'process == "CodexPetNest"' --level debug
-
-# ─── 版本 & 信息 ───────────────────────────────
-
-# 显示 Swift 版本
-swift --version
-
-# 显示 SDK 路径
-xcrun --show-sdk-path
-
-# 显示 Swift 运行时路径
-xcrun --show-sdk-platform-path
-
-# ─── Git ───────────────────────────────────────
-
-git tag v0.1.0                          # 打版本 tag
-git push origin v0.1.0                  # 推送 tag
-# 说明：README 中的版本号 (0.1.0) 需与
-# AppDelegate.swift 和 NestOverlayWindow.swift 中的保持同步
-```
 
 ### 项目结构
 
@@ -369,7 +259,7 @@ CodexPet Nest is a macOS desktop companion app for [codexpet.xyz](https://codexp
 
 #### Quick Start
 
-```bash
+````bash
 # Clone the repository
 git clone https://github.com/RyanNiu/codexpet-nest.git
 cd codexpet-nest
@@ -395,116 +285,6 @@ make clean
 # Generate release package (DMG)
 make dmg
 
-### Release Guide
-
-This project is configured with GitHub Actions for automatic releases. For detailed instructions, see the [Release and Tagging Guide](docs/RELEASE_GUIDE.md).
-
-When you're ready to release a new version:
-1. Update the version number in `Resources/Info.plist`.
-2. Commit your changes and tag the version:
-   ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-3. GitHub will automatically trigger a build task and generate a `.dmg` installer.
-3. GitHub will automatically trigger a build task, compile the code, package assets, generate a `.dmg` installer, and publish it to the project's Releases page.
-```
-
-#### Make Target Descriptions
-
-| Command             | Description                                          |
-| ------------------- | ---------------------------------------------------- |
-| `make` / `make all` | Compile debug version (binary at `.build/CodexPetNest`) |
-| `make debug`        | Same as `make` (debug build)                         |
-| `make release`      | Compile release version (with `-O` optimization)      |
-| `make app`          | Compile release and package as `CodexPet Nest.app`   |
-| `make run`          | Package app and launch                               |
-| `make clean`        | Remove the `.build/` directory                       |
-
-#### Why not Swift Package Manager?
-
-The current environment's SPM has toolchain compatibility issues (`PackageDescription` symbols undefined), so this project uses a `Makefile` + direct `swiftc` compilation. The Makefile automatically handles source file discovery, framework linking, and SDK paths.
-
-To restore SPM builds, ensure Swift toolchain version ≥ 6.0 and CLT is fully installed.
-
-### Development Commands
-
-```bash
-# ─── Build & Run ──────────────────────────────
-
-make                      # Compile debug version (most common for dev)
-make app                  # Package as .app (verification before release)
-make run                  # Package and launch (full feature verification)
-make clean && make dev    # Recompile after cleaning
-
-# ─── Test API (Requires codexpet site dev server) ───
-
-# Check version
-curl -s https://codexpet.xyz/api/desktop/version | jq
-
-# Pet list
-curl -s "https://codexpet.xyz/api/pets?page=1" -H "Accept: application/json" | jq
-
-# Pet details
-curl -s "https://codexpet.xyz/api/pets/codie" -H "Accept: application/json" | jq
-
-# Pet download metadata
-curl -s "https://codexpet.xyz/api/pets/codie/download" -H "Accept: application/json" | jq
-
-# Nest list
-curl -s "https://codexpet.xyz/api/nests?page=1" -H "Accept: application/json" | jq
-
-# Device code request (POST)
-curl -s -X POST https://codexpet.xyz/api/auth/device-code \
-  -H "Content-Type: application/json" \
-  -d '{"client":"codexpet-nest","platform":"macos"}' | jq
-
-# ─── Local Development (Two Repositories) ──────
-
-# 1. Start codexpet site dev server (In another terminal)
-cd /path/to/codexpet
-npm run dev &
-
-# 2. Build nest app
-cd /path/to/codexpet-nest
-make run
-
-# 3. Observe logs
-# Console output can be viewed in the terminal or "Console.app"
-# If API fails, check rewrites target port in next.config.ts
-
-# ─── Debugging ─────────────────────────────────
-
-# View compilation details (including warnings)
-make clean && make 2>&1
-
-# Typecheck a specific file
-xcrun swiftc -sdk $(xcrun --show-sdk-path) -typecheck Sources/CodexPetNest/CodexPetAPI.swift
-
-# Check app bundle structure
-ls -R ".build/CodexPet Nest.app/Contents"
-
-# View runtime logs
-log stream --predicate 'process == "CodexPetNest"' --level debug
-
-# ─── Version & Info ────────────────────────────
-
-# Show Swift version
-swift --version
-
-# Show SDK path
-xcrun --show-sdk-path
-
-# Show Swift runtime path
-xcrun --show-sdk-platform-path
-
-# ─── Git ───────────────────────────────────────
-
-git tag v0.1.0                          # Create version tag
-git push origin v0.1.0                  # Push tag
-# Note: Version numbers in README (0.1.0) should match
-# AppDelegate.swift and NestOverlayWindow.swift
-```
 
 ### Project Structure
 
@@ -540,7 +320,7 @@ codexpet-nest/
     ├── permissions.md          # Permissions documentation
     └── specs/
         └── nest-package.md     # Nest package standard specification
-```
+`````
 
 ### Architecture Overview
 
@@ -582,4 +362,3 @@ This repository includes a redistribution exception for CodexPet Nest bridge int
 ### Privacy and Security
 
 See [PRIVACY.md](PRIVACY.md), [SECURITY.md](SECURITY.md), and [docs/permissions.md](docs/permissions.md) for more information.
-
