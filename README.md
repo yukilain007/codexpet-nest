@@ -89,7 +89,7 @@ CodexPet Nest 是 [codexpet.xyz](https://codexpet.xyz) 的 macOS 桌面伴侣应
 
 #### 快速开始
 
-`````bash
+````bash
 # 克隆仓库
 git clone https://github.com/RyanNiu/codexpet-nest.git
 cd codexpet-nest
@@ -150,7 +150,7 @@ codexpet-nest/
     ├── permissions.md          # 权限说明
     └── specs/
         └── nest-package.md     # Nest 小窝包标准规范
-```
+````
 
 ### 架构概览
 
@@ -337,7 +337,7 @@ codexpet-nest/
     ├── permissions.md          # Permissions documentation
     └── specs/
         └── nest-package.md     # Nest package standard specification
-`````
+````
 
 ### Architecture Overview
 
