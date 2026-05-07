@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import CoreGraphics
+import UniformTypeIdentifiers
 
 struct PetAnimationConfig: Codable {
     let row: Int
@@ -222,7 +223,7 @@ final class PetSpriteSheetRenderer {
         
         if let outputImage = context.makeImage() {
             let url = URL(fileURLWithPath: "/tmp/codexpet-frames-\(petId).png")
-            let destination = CGImageDestinationCreateWithURL(url as CFURL, kUTTypePNG, 1, nil)
+            let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
             if let dest = destination {
                 CGImageDestinationAddImage(dest, outputImage, nil)
                 CGImageDestinationFinalize(dest)

@@ -12,6 +12,10 @@ struct InstalledNest: Identifiable {
     var author: String { manifest.author }
     var version: String { manifest.version }
     var description: String { manifest.description }
+    
+    var isBuiltIn: Bool {
+        LocalNestManager.isBuiltIn(id: id)
+    }
 }
 
 final class LocalNestManager {
@@ -19,6 +23,17 @@ final class LocalNestManager {
     
     private let nestsDir: URL
     private(set) var installedNests: [InstalledNest] = []
+    
+    static let builtInNestIds: Set<String> = [
+        "capacity-orbit-nest",
+        "basket-pomodoro-nest",
+        "legend-status-nest",
+        "window-desk-nest"
+    ]
+    
+    static func isBuiltIn(id: String) -> Bool {
+        return builtInNestIds.contains(id)
+    }
     
     private init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -91,7 +106,9 @@ final class LocalNestManager {
     }
     
     func uninstallNest(id: String) throws {
-        if id == "default" { return }
+        if id == "default" || LocalNestManager.isBuiltIn(id: id) {
+            throw NSError(domain: "LocalNestManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot uninstall built-in nest skins."])
+        }
         if SettingsStore.shared.settings.activeNestId == id {
             throw NSError(domain: "LocalNestManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot uninstall the active nest skin. Switch to default first."])
         }

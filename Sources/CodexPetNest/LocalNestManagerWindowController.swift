@@ -181,7 +181,13 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         } else {
             let nest = nests[row - 1]
             titleLabel.stringValue = nest.name
-            authorLabel.stringValue = "v\(nest.version) by \(nest.author)"
+            
+            if nest.isBuiltIn {
+                authorLabel.stringValue = "Built-in • v\(nest.version) by \(nest.author)"
+            } else {
+                authorLabel.stringValue = "v\(nest.version) by \(nest.author)"
+            }
+            
             if let pURL = nest.previewURL {
                 iconView.image = NSImage(contentsOf: pURL)
             } else {
@@ -221,10 +227,14 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         
         let menu = NSMenu()
         menu.addItem(withTitle: "Open in Finder", action: #selector(openInFinder(_:)), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Uninstall", action: #selector(uninstallNest(_:)), keyEquivalent: "").target = self
+        
+        let uninstallItem = NSMenuItem(title: "Uninstall", action: #selector(uninstallNest(_:)), keyEquivalent: "")
+        uninstallItem.target = self
+        uninstallItem.isEnabled = !nest.isBuiltIn
+        menu.addItem(uninstallItem)
         
         menu.item(at: 0)?.representedObject = nest
-        menu.item(at: 1)?.representedObject = nest
+        uninstallItem.representedObject = nest
         
         let point = NSPoint(x: 0, y: sender.bounds.height)
         menu.popUp(positioning: nil, at: point, in: sender)

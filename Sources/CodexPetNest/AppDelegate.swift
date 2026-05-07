@@ -25,6 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarController = MenuBarController()
         nestWindow = NestOverlayWindow()
 
+        // Install/Sync built-in nests
+        BuiltInNestInstaller.shared.installIfNeeded()
+
         if SettingsStore.shared.settings.showNest {
             nestWindow.orderFront(nil)
         }

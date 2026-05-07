@@ -27,6 +27,11 @@ CodexPet Nest 是 [codexpet.xyz](https://codexpet.xyz) 的 macOS 桌面伴侣应
 ### v0.1 主要功能
 
 - **透明置顶悬浮巢窗口**：跟随 Codex pet 移动（或独立显示）。
+- **内置 4 个小窝示例**：
+  - **Capacity Orbit** — 经典的动态使用量圆环（内置渲染）。
+  - **Basket Pomodoro Nest** — 带有专注番茄钟的舒适篮子。
+  - **Legend Status Nest** — 游戏风格的状态面板。
+  - **Nest Terminal** — 复古终端风格的小窝。
 - **内置小组件**：
   - **时钟** — 当前时间和日期。
   - **倒计时** — 设置并显示目标日期/时间。
@@ -35,20 +40,15 @@ CodexPet Nest 是 [codexpet.xyz](https://codexpet.xyz) 的 macOS 桌面伴侣应
 - **本地宠物管理**：
   - 自动扫描并列出已安装的 Codex 宠物。
   - 支持安装本地宠物 ZIP 包。
-  - 支持卸载 app 管理的宠物包。
   - 只读识别当前活动宠物。
 - **在线宠物市场**：
   - 在应用内浏览并一键下载 [codexpet.xyz](https://codexpet.xyz) 上的宠物。
-  - 强制 SHA256 校验，确保安装包完整且安全。
 - **本地 Nest Skin 管理**：
-  - 安装、预览并切换小窝外观。
-  - 小窝外观包是**纯静态资源包**（图片 + 布局 JSON），禁止执行代码，绝对安全。
-- **在线官方 Nest 市场**：
-  - 浏览并下载官方设计的小窝皮肤。
-  - 支持一键应用（Apply Now）。
+  - 预览并切换小窝外观。支持自动安装内置皮肤。
+- **在线 Nest 市场**：
+  - 计划中 (Coming Soon)，初始版本优先支持内置示例。
 - **安全保障**：
-  - 使用 `SafeZipReader` 解压，强制防御路径遍历和符号链接漏洞。
-  - 严格限制包内容，禁止脚本和二进制执行文件。
+  - 强制 SHA256 校验，防止路径遍历，禁止脚本执行。
 - **多显示器支持**：自动适配多屏环境。
 
 ### 安装
@@ -103,6 +103,23 @@ make run
 
 # 清理构建产物
 make clean
+
+# 生成发布安装包 (DMG)
+make dmg
+
+### 发布指南
+
+本项目已配置 GitHub Actions 自动发布。详细流程请参考 [发布与打标签指南](docs/RELEASE_GUIDE.md)。
+
+当你准备发布新版本时：
+1. 修改 `Resources/Info.plist` 中的版本号。
+2. 提交代码并打上版本标签：
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+3. GitHub 会自动触发构建任务并生成 `.dmg` 安装包。
+3. GitHub 会自动触发构建任务，编译代码、打包素材并生成 `.dmg` 安装包，最后自动发布到项目的 Releases 页面。
 ```
 
 #### Make 目标说明
@@ -303,28 +320,23 @@ CodexPet Nest is a macOS desktop companion app for [codexpet.xyz](https://codexp
 ### v0.1 Key Features
 
 - **Transparent Floating Nest Window**: Follows the Codex pet or stays in a fixed position.
+- **4 Built-in Nest Examples**:
+  - **Capacity Orbit** — Classic dynamic usage rings (built-in rendering).
+  - **Basket Pomodoro Nest** — Cozy basket with a focus timer.
+  - **Legend Status Nest** — Game-style status panel.
+  - **Nest Terminal** — Retro terminal-style nest.
 - **Built-in Widgets**:
-  - **Clock** — Current time and date.
-  - **Countdown** — Set and display target date/time.
-  - **Pomodoro** — Focus and break timer.
-  - **Usage Indicator** — Circular graph of Codex usage based on local logs (No API Key required).
+  - **Clock**, **Countdown**, **Pomodoro**, and **Usage Indicator**.
 - **Local Pet Management**:
-  - Automatically scans and lists installed Codex pets.
-  - Supports installing local pet ZIP packages.
-  - Supports uninstalling app-managed pet packages.
-  - Read-only identification of the current active pet.
+  - Automatically scans and lists installed Codex pets. Supports local ZIP installation.
 - **Online Pet Marketplace**:
-  - Browse and one-click download pets from [codexpet.xyz](https://codexpet.xyz) within the app.
-  - Enforced SHA256 verification to ensure package integrity and safety.
+  - Browse and download pets from [codexpet.xyz](https://codexpet.xyz).
 - **Local Nest Skin Management**:
-  - Install, preview, and switch nest appearances.
-  - Nest skins are **purely static resource packages** (images + layout JSON), preventing any code execution.
-- **Online Official Nest Marketplace**:
-  - Browse and download officially designed nest skins.
-  - Supports "Apply Now" for immediate application.
+  - Preview and switch nest skins. Automatically installs built-in skins.
+- **Online Nest Marketplace**:
+  - Coming Soon. Initial version focused on built-in examples.
 - **Security Assurance**:
-  - Uses `SafeZipReader` for extraction, enforcing defenses against path traversal and symlink vulnerabilities.
-  - Strictly limits package content; prohibits scripts and binary executables.
+  - Enforced SHA256 verification and path traversal protection.
 - **Multi-monitor Support**: Automatically adapts to multi-screen environments.
 
 ### Installation
@@ -379,6 +391,23 @@ make run
 
 # Clean build artifacts
 make clean
+
+# Generate release package (DMG)
+make dmg
+
+### Release Guide
+
+This project is configured with GitHub Actions for automatic releases. For detailed instructions, see the [Release and Tagging Guide](docs/RELEASE_GUIDE.md).
+
+When you're ready to release a new version:
+1. Update the version number in `Resources/Info.plist`.
+2. Commit your changes and tag the version:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+3. GitHub will automatically trigger a build task and generate a `.dmg` installer.
+3. GitHub will automatically trigger a build task, compile the code, package assets, generate a `.dmg` installer, and publish it to the project's Releases page.
 ```
 
 #### Make Target Descriptions

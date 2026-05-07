@@ -30,5 +30,7 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>FSL-1.1-MIT. Converts to MIT on 2028-05-06. Copyright (c) 2026 Ryan Niu.</string>
+	<key>CFBundleIconFile</key>
+	<string>CodexPetNest</string>
 </dict>
 </plist>

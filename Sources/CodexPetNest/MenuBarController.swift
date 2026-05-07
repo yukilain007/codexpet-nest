@@ -8,7 +8,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.title = ""
-            if let img = NSImage(systemSymbolName: "bird", accessibilityDescription: "Nest") {
+            if let img = NSImage(named: "MenuBarIconTemplate") {
+                img.isTemplate = true
+                button.image = img
+            } else if let img = NSImage(systemSymbolName: "bird", accessibilityDescription: "Nest") {
                 img.isTemplate = true
                 button.image = img
             } else {
@@ -35,6 +38,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(NSMenuItem(title: "Open Pets Marketplace...",
                                  action: #selector(MenuActionTarget.browsePets),
                                  keyEquivalent: ","))
+        
+        // let nestMarketItem = NSMenuItem(title: "Online Nest Marketplace (Coming Soon)",
+        //                                  action: #selector(MenuActionTarget.browseNests),
+        //                                  keyEquivalent: "")
+        // nestMarketItem.isEnabled = false
+        // menu.addItem(nestMarketItem)
 
         menu.addItem(.separator())
         
