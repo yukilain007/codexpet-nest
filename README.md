@@ -51,9 +51,17 @@ CodexPet Nest 是 [codexpet.xyz](https://codexpet.xyz) 的 macOS 桌面伴侣应
   - 强制 SHA256 校验，防止路径遍历，禁止脚本执行。
 - **多显示器支持**：自动适配多屏环境。
 
-### 安装
+### 下载与安装
 
-1. 从 [codexpet.xyz/downloads](https://codexpet.xyz/downloads) 下载 `CodexPetNest.dmg`。
+> [!IMPORTANT]
+> 目前 CodexPet Nest 仅支持 **macOS** 系统。
+
+你可以通过以下任一方式获取：
+
+- **官网下载**：[codexpet.xyz/nest/](https://codexpet.xyz/nest/)
+- **GitHub Release**：[GitHub Releases](https://github.com/RyanNiu/codexpet-nest/releases)
+
+1. 下载并打开 `CodexPetNest.dmg`。
 2. 将 `CodexPet Nest.app` 拖入 `Applications` 文件夹。
 
 > 首次运行时，如果 Gatekeeper 提示"无法验证开发者"，请在 Finder 中右键 app → 打开，或在「系统设置 → 隐私与安全性」中点击"仍要打开"。
@@ -229,9 +237,17 @@ CodexPet Nest is a macOS desktop companion app for [codexpet.xyz](https://codexp
   - Enforced SHA256 verification and path traversal protection.
 - **Multi-monitor Support**: Automatically adapts to multi-screen environments.
 
-### Installation
+### Download & Installation
 
-1. Download `CodexPetNest.dmg` from [codexpet.xyz/downloads](https://codexpet.xyz/downloads).
+> [!IMPORTANT]
+> Currently, CodexPet Nest only supports **macOS**.
+
+You can download the latest version from:
+
+- **Official Website**: [codexpet.xyz/nest/](https://codexpet.xyz/nest/)
+- **GitHub Release**: [GitHub Releases](https://github.com/RyanNiu/codexpet-nest/releases)
+
+1. Download and open `CodexPetNest.dmg`.
 2. Drag `CodexPet Nest.app` into your `Applications` folder.
 
 > Upon first launch, if Gatekeeper warns "Developer cannot be verified," right-click the app in Finder → Open, or click "Open Anyway" in "System Settings → Privacy & Security."

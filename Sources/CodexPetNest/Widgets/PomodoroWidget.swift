@@ -35,22 +35,27 @@ final class PomodoroWidget: NSView {
         phaseLabel.stringValue = "Ready"
         addSubview(phaseLabel)
 
-        startPauseButton.font = .systemFont(ofSize: 10)
+        startPauseButton.wantsLayer = true
+        startPauseButton.layer?.cornerRadius = 4
+        startPauseButton.font = .systemFont(ofSize: 10, weight: .medium)
         startPauseButton.bezelStyle = .inline
         startPauseButton.isBordered = false
-        startPauseButton.contentTintColor = .white.withAlphaComponent(0.8)
+        startPauseButton.contentTintColor = .white
         startPauseButton.target = self
         startPauseButton.action = #selector(toggleStartPause)
         addSubview(startPauseButton)
 
-        resetButton.font = .systemFont(ofSize: 10)
+        resetButton.wantsLayer = true
+        resetButton.layer?.cornerRadius = 4
+        resetButton.font = .systemFont(ofSize: 10, weight: .medium)
         resetButton.bezelStyle = .inline
         resetButton.isBordered = false
-        resetButton.contentTintColor = .white.withAlphaComponent(0.5)
+        resetButton.contentTintColor = .white.withAlphaComponent(0.7)
         resetButton.target = self
         resetButton.action = #selector(doReset)
         addSubview(resetButton)
 
+        updateDisplay()
         NotificationCenter.default.addObserver(self, selector: #selector(toggleStartPause), name: .togglePomodoro, object: nil)
     }
 
@@ -62,9 +67,17 @@ final class PomodoroWidget: NSView {
         let h = bounds.height
         timeLabel.frame = NSRect(x: 0, y: h - 26, width: w, height: 22)
         phaseLabel.frame = NSRect(x: 0, y: h - 34, width: w, height: 10)
-        let btnW = (w - 4) / 2
-        startPauseButton.frame = NSRect(x: 0, y: 0, width: btnW, height: 16)
-        resetButton.frame = NSRect(x: btnW + 4, y: 0, width: btnW, height: 16)
+        
+        // Horizontally align both buttons by unifying the Y coordinate
+        let gap: CGFloat = 22
+        let btnW: CGFloat = 42
+        let baseStartX = (w - (btnW * 2 + gap)) / 2
+        let baseResetX = baseStartX + btnW + gap
+        let baseBottomY: CGFloat = 4
+        
+        let unifiedY: CGFloat = baseBottomY - 7
+        startPauseButton.frame = NSRect(x: baseStartX - 10, y: unifiedY, width: btnW, height: 18)
+        resetButton.frame = NSRect(x: baseResetX + 10, y: unifiedY, width: btnW, height: 18)
     }
 
     @objc private func toggleStartPause() {
@@ -136,9 +149,15 @@ final class PomodoroWidget: NSView {
         }
         switch phase {
         case .idle, .paused:
-            startPauseButton.title = "Start"
+            startPauseButton.title = "▶ Start"
+            startPauseButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
         case .focus, .rest:
-            startPauseButton.title = "Pause"
+            startPauseButton.title = "Ⅱ Pause"
+            startPauseButton.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.08).cgColor
         }
+        startPauseButton.layer?.borderWidth = 0
+        
+        resetButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.04).cgColor
+        resetButton.layer?.borderWidth = 0
     }
 }
