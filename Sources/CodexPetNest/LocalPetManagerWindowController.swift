@@ -43,6 +43,12 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
     
     private var pets: [LocalPet] = []
     private var cancellables = Set<AnyCancellable>()
+    
+    private let previewView = AnimatedSpritePreviewView()
+    private let actionSwitcher = NSSegmentedControl()
+    private var spritesheetImage: NSImage?
+    private var spriteDescriptor: SpriteSheetDescriptor?
+
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 420))
@@ -121,15 +127,26 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         statusLabel.frame = NSRect(x: 20, y: 270, width: 340, height: 15)
         detailView.addSubview(statusLabel)
         
-        previewImage.frame = NSRect(x: 20, y: 140, width: 120, height: 120)
-        previewImage.imageScaling = .scaleProportionallyUpOrDown
-        previewImage.wantsLayer = true
-        previewImage.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        previewImage.layer?.cornerRadius = 8
-        detailView.addSubview(previewImage)
+        previewView.frame = NSRect(x: 20, y: 140, width: 200, height: 200)
+        previewView.wantsLayer = true
+        previewView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        previewView.layer?.cornerRadius = 8
+        detailView.addSubview(previewView)
         
-        descLabel.frame = NSRect(x: 20, y: 60, width: 340, height: 70)
+        actionSwitcher.segmentCount = 4
+        actionSwitcher.setLabel("Idle", forSegment: 0)
+        actionSwitcher.setLabel("Walk", forSegment: 1)
+        actionSwitcher.setLabel("Sleep", forSegment: 2)
+        actionSwitcher.setLabel("Action", forSegment: 3)
+        actionSwitcher.selectedSegment = 0
+        actionSwitcher.target = self
+        actionSwitcher.action = #selector(actionChanged)
+        actionSwitcher.frame = NSRect(x: 20, y: 110, width: 340, height: 25)
+        detailView.addSubview(actionSwitcher)
+        
+        descLabel.frame = NSRect(x: 20, y: 55, width: 340, height: 50)
         detailView.addSubview(descLabel)
+
         
         openFinderBtn.frame = NSRect(x: 20, y: 20, width: 120, height: 30)
         openFinderBtn.target = self
@@ -168,15 +185,58 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         }
         
         // Load preview
-        if let preview = pet.preview {
-            let imgURL = URL(fileURLWithPath: pet.path).appendingPathComponent(preview)
-            previewImage.image = NSImage(contentsOf: imgURL)
+        spritesheetImage = nil
+        spriteDescriptor = nil
+        
+        let sheetPath = URL(fileURLWithPath: pet.path).appendingPathComponent(pet.spritesheetPath).path
+        if let img = NSImage(contentsOfFile: sheetPath) {
+            self.spritesheetImage = img
+            if let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                // Convert manifest to [String: Any] for detectDescriptor
+                var manifestDict: [String: Any] = [:]
+                if let m = pet.manifest {
+                    if let fw = m.frameWidth { manifestDict["frameWidth"] = fw }
+                    if let fh = m.frameHeight { manifestDict["frameHeight"] = fh }
+                    if let fs = m.frameSize { manifestDict["frameSize"] = fs }
+                    if let c = m.columns { manifestDict["columns"] = c }
+                    if let r = m.rows { manifestDict["rows"] = r }
+                }
+                self.spriteDescriptor = PetSpriteSheetRenderer.shared.detectDescriptor(cgImage: cg, manifest: manifestDict)
+            }
+            updateAnimation()
         } else {
-            previewImage.image = NSImage(systemSymbolName: "Questionmark.square", accessibilityDescription: nil)
+            previewView.setFrames([])
         }
         
         uninstallBtn.title = pet.isAppManaged ? "Delete Pet" : "Remove Folder"
     }
+    
+    @objc private func actionChanged() {
+        updateAnimation()
+    }
+    
+    private func updateAnimation() {
+        guard let image = spritesheetImage, let desc = spriteDescriptor else { return }
+        let row = tableView.selectedRow
+        if row < 0 || row >= pets.count { return }
+        let pet = pets[row]
+        
+        let actions = ["idle", "walk", "sleep", "action"]
+        let seg = actionSwitcher.selectedSegment
+        let actionName = seg < actions.count ? actions[seg] : "idle"
+        
+        if let cached = PetImageCache.shared.getAnimation(for: pet.id, action: actionName) {
+            previewView.setFrames(cached)
+            return
+        }
+        
+        let frames = PetSpriteSheetRenderer.shared.extractAnimationFrames(from: image, action: actionName, desc: desc)
+        if !frames.isEmpty {
+            PetImageCache.shared.setAnimation(frames, for: pet.id, action: actionName)
+        }
+        previewView.setFrames(frames)
+    }
+
 
     // MARK: - Actions
 
@@ -198,7 +258,7 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         if pet.isCurrent {
             let alert = NSAlert()
             alert.messageText = "Cannot Uninstall Active Pet"
-            alert.informativeText = "'\(pet.displayName)' is currently active in Codex. Please switch to another pet in Codex Settings first, then try uninstalling again."
+            alert.informativeText = "'\(pet.displayName)' is currently active in Codex. Codex opened Settings, please manually go to Appearance / Personalization / Pets and switch to another pet first."
             alert.addButton(withTitle: "Open Codex Settings")
             alert.addButton(withTitle: "OK")
             if alert.runModal() == .alertFirstButtonReturn {
@@ -244,7 +304,7 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
                     await MainActor.run {
                         let successAlert = NSAlert()
                         successAlert.messageText = "Pet Installed"
-                        successAlert.informativeText = "Pet installed. In Codex, open Settings -> Appearance and choose this pet."
+                        successAlert.informativeText = "Pet installed. Codex opened Settings. Please choose Appearance / Personalization / Pets and choose this pet."
                         successAlert.addButton(withTitle: "Open Codex Settings")
                         successAlert.addButton(withTitle: "OK")
                         if successAlert.runModal() == .alertFirstButtonReturn {
@@ -262,20 +322,27 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
     }
 
     @objc private func openCodexSettings() {
-        let url = URL(string: "codex://settings/general-settings")!
-        if NSWorkspace.shared.open(url) {
-            // Success
-        } else {
-            // Fallback to /Applications/Codex.app
-            let appPath = "/Applications/Codex.app"
-            if FileManager.default.fileExists(atPath: appPath) {
-                NSWorkspace.shared.open(URL(fileURLWithPath: appPath))
-            } else {
-                let alert = NSAlert()
-                alert.messageText = "Could not open Codex"
-                alert.informativeText = "Codex.app was not found in /Applications."
-                alert.runModal()
+        // Try priority routes
+        let routes = [
+            "codex://settings/personalization",
+            "codex://settings/general-settings"
+        ]
+        
+        for route in routes {
+            if let url = URL(string: route), NSWorkspace.shared.open(url) {
+                return
             }
+        }
+        
+        // Fallback to app itself
+        let appPath = "/Applications/Codex.app"
+        if FileManager.default.fileExists(atPath: appPath) {
+            NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: appPath), configuration: NSWorkspace.OpenConfiguration())
+        } else {
+            let alert = NSAlert()
+            alert.messageText = "Could not open Codex"
+            alert.informativeText = "Codex.app was not found in /Applications."
+            alert.runModal()
         }
     }
 
@@ -289,14 +356,25 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         let pet = pets[row]
         let identifier = NSUserInterfaceItemIdentifier("PetCell")
         var cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
+        
         if cell == nil {
             cell = NSTableCellView()
             cell?.identifier = identifier
+            
+            let imgView = NSImageView()
+            imgView.imageScaling = .scaleProportionallyUpOrDown
+            imgView.frame = NSRect(x: 5, y: 2, width: 40, height: 40)
+            imgView.wantsLayer = true
+            imgView.layer?.cornerRadius = 4
+            imgView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.05).cgColor
+            cell?.addSubview(imgView)
+            cell?.imageView = imgView
+            
             let textField = NSTextField(labelWithString: "")
-            textField.identifier = NSUserInterfaceItemIdentifier("TextField")
+            textField.font = .systemFont(ofSize: 13, weight: .medium)
+            textField.frame = NSRect(x: 50, y: 12, width: 160, height: 20)
             cell?.addSubview(textField)
             cell?.textField = textField
-            textField.frame = NSRect(x: 5, y: 5, width: 210, height: 20)
         }
         
         var display = pet.displayName
@@ -304,8 +382,27 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         cell?.textField?.stringValue = display
         cell?.textField?.textColor = pet.isCurrent ? .systemGreen : .labelColor
         
+        // Thumbnail
+        cell?.imageView?.image = nil
+        if let cached = PetImageCache.shared.getThumbnail(for: pet.id) {
+            cell?.imageView?.image = cached
+        } else {
+            let sheetPath = URL(fileURLWithPath: pet.path).appendingPathComponent(pet.spritesheetPath).path
+            if let img = NSImage(contentsOfFile: sheetPath) {
+                if let thumb = PetSpriteSheetRenderer.shared.extractFirstFrame(from: img, petId: pet.id) {
+                    PetImageCache.shared.setThumbnail(thumb, for: pet.id)
+                    cell?.imageView?.image = thumb
+                }
+            }
+        }
+        
         return cell
     }
+    
+    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+        return 44
+    }
+
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         updateDetail()

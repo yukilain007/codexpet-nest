@@ -14,7 +14,8 @@ final class NestRenderer: NSView {
     
     private let metricProviders: [MetricProvider] = [
         UsageMetricProvider(),
-        SystemMetricProvider()
+        SystemMetricProvider(),
+        PetMetricProvider()
     ]
     private var metricSnapshot = MetricSnapshot()
     private var metricTimer: Timer?

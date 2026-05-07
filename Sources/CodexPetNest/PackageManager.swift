@@ -32,7 +32,7 @@ enum PackageManagerError: Error, LocalizedError {
     case downloadFailed(String)
     case sha256Mismatch(expected: String, actual: String)
     case unzipFailed(String)
-    case missingManifest
+    case missingManifest(PackageType)
     case invalidManifest(String)
     case missingRequiredFile(String)
     case pathTraversal(String)
@@ -44,7 +44,12 @@ enum PackageManagerError: Error, LocalizedError {
         case .downloadFailed(let msg): return "Download failed: \(msg)"
         case .sha256Mismatch(let exp, let act): return "SHA256 mismatch. Expected \(exp.prefix(16))..., got \(act.prefix(16))..."
         case .unzipFailed(let msg): return "Unzip failed: \(msg)"
-        case .missingManifest: return "This pet package is missing codexpet-package.json. Please use a CodexPet package zip."
+        case .missingManifest(let type):
+            if type == .pet {
+                return "ZIP must contain codexpet-package.json, or pet.json plus its spritesheet at the package root or inside one top-level folder."
+            } else {
+                return "This package is missing codexpet-package.json. Please use a CodexPet package zip."
+            }
         case .invalidManifest(let msg): return "Invalid package manifest: \(msg)"
         case .missingRequiredFile(let f): return "Missing required file: \(f)"
         case .pathTraversal(let p): return "Unsafe path detected: \(p)"
@@ -144,7 +149,7 @@ final class PackageManager {
         try await safeUnzip(zipPath, to: workDir, type: type)
         try? FileManager.default.removeItem(at: zipPath)
 
-        let (manifest, packageRoot) = try resolvePackageRoot(in: workDir)
+        let (manifest, packageRoot) = try resolvePackageRoot(in: workDir, type: type)
         try validateManifest(manifest, type: type, packageRoot: packageRoot)
 
         let installDir = (type == .pet ? codexPetsDir : nestsDir).appendingPathComponent(manifest.id)
@@ -172,7 +177,7 @@ final class PackageManager {
 
     // MARK: - Validation
 
-    private func resolvePackageRoot(in workDir: URL) throws -> (PackageManifest, URL) {
+    private func resolvePackageRoot(in workDir: URL, type: PackageType) throws -> (PackageManifest, URL) {
         let fileManager = FileManager.default
         let enumerator = fileManager.enumerator(at: workDir, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles])
         var manifests: [(manifest: PackageManifest, url: URL)] = []
@@ -192,37 +197,100 @@ final class PackageManager {
             }
         }
 
-        if manifests.isEmpty {
-            throw PackageManagerError.missingManifest
-        }
-        
-        // If multiple manifests found (e.g. nested packages), pick the shallowest one that isn't in __MACOSX
-        manifests.sort { a, b in
-            a.url.path.count < b.url.path.count
+        if !manifests.isEmpty {
+            // If multiple manifests found (e.g. nested packages), pick the shallowest one that isn't in __MACOSX
+            manifests.sort { a, b in
+                a.url.path.count < b.url.path.count
+            }
+
+            let entry = manifests[0]
+            let packageRoot = entry.url.deletingLastPathComponent()
+            
+            let normalizedWorkDir = workDir.standardizedFileURL
+            let normalizedPackageRoot = packageRoot.standardizedFileURL
+            
+            // Check if packageRoot is workDir or a direct child of workDir
+            if normalizedPackageRoot != normalizedWorkDir {
+                let parent = normalizedPackageRoot.deletingLastPathComponent()
+                if parent != normalizedWorkDir {
+                    let relativePath = normalizedPackageRoot.path.replacingOccurrences(of: normalizedWorkDir.path, with: "")
+                    let components = relativePath.components(separatedBy: "/").filter { !$0.isEmpty }
+                    if components.count > 1 {
+                        throw PackageManagerError.invalidManifest("Package root must be ZIP root or a single top-level folder. Found at: \(relativePath)")
+                    }
+                }
+            }
+
+            return (entry.manifest, packageRoot)
         }
 
-        let entry = manifests[0]
-        let packageRoot = entry.url.deletingLastPathComponent()
-        
-        let normalizedWorkDir = workDir.standardizedFileURL
-        let normalizedPackageRoot = packageRoot.standardizedFileURL
-        
-        // Check if packageRoot is workDir or a direct child of workDir
-        if normalizedPackageRoot != normalizedWorkDir {
-            let parent = normalizedPackageRoot.deletingLastPathComponent()
-            if parent != normalizedWorkDir {
-                // If it's deeper, we allow it but log a warning? 
-                // The user request says "根目录只有一个子目录，子目录里包含 codexpet-package.json"
-                // Let's check if the path between workDir and packageRoot is just one folder.
-                let relativePath = normalizedPackageRoot.path.replacingOccurrences(of: normalizedWorkDir.path, with: "")
-                let components = relativePath.components(separatedBy: "/").filter { !$0.isEmpty }
-                if components.count > 1 {
-                    throw PackageManagerError.invalidManifest("Package root must be ZIP root or a single top-level folder. Found at: \(relativePath)")
+        // Fallback for .pet type: search for pet.json in root or unique top-level folder
+        if type == .pet {
+            let rootContents = try fileManager.contentsOfDirectory(at: workDir, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles])
+            
+            // 1. Try ZIP root
+            let rootPetJson = workDir.appendingPathComponent("pet.json")
+            if fileManager.fileExists(atPath: rootPetJson.path) {
+                return try resolveLegacyPetPackage(at: workDir, petJsonURL: rootPetJson)
+            }
+            
+            // 2. Try unique top-level directory
+            let dirs = rootContents.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+            if dirs.count == 1 {
+                let subDir = dirs[0]
+                let subPetJson = subDir.appendingPathComponent("pet.json")
+                if fileManager.fileExists(atPath: subPetJson.path) {
+                    return try resolveLegacyPetPackage(at: subDir, petJsonURL: subPetJson)
                 }
             }
         }
 
-        return (entry.manifest, packageRoot)
+        throw PackageManagerError.missingManifest(type)
+    }
+
+    private func resolveLegacyPetPackage(at packageRoot: URL, petJsonURL: URL) throws -> (PackageManifest, URL) {
+        let petData = try Data(contentsOf: petJsonURL)
+        let petManifest: PetManifest
+        do {
+            petManifest = try JSONDecoder().decode(PetManifest.self, from: petData)
+        } catch {
+            throw PackageManagerError.invalidManifest("Could not parse pet.json: \(error.localizedDescription)")
+        }
+
+        // Validate ID format
+        let idPattern = try NSRegularExpression(pattern: "^[a-z0-9][a-z0-9-]{1,50}$")
+        guard idPattern.firstMatch(in: petManifest.id, range: NSRange(petManifest.id.startIndex..., in: petManifest.id)) != nil else {
+            throw PackageManagerError.invalidManifest("Invalid pet id format in pet.json: \(petManifest.id)")
+        }
+
+        // Validate spritesheet existence and safety
+        try validateFileExists(in: packageRoot, path: petManifest.spritesheetPath, label: "Spritesheet")
+
+        // Validate preview existence and safety if present
+        if let preview = petManifest.preview {
+            try validateFileExists(in: packageRoot, path: preview, label: "Preview")
+        }
+
+        // Construct memory PackageManifest
+        let manifest = PackageManifest(
+            type: "codexpet.pet",
+            schemaVersion: "1.0.0",
+            id: petManifest.id,
+            name: petManifest.displayName,
+            version: "1.0.0",
+            author: "Local",
+            description: petManifest.description,
+            manifest: "pet.json",
+            spritesheet: petManifest.spritesheetPath,
+            preview: petManifest.preview,
+            license: "Unknown",
+            tags: nil,
+            layout: nil,
+            theme: nil,
+            widgets: nil
+        )
+
+        return (manifest, packageRoot)
     }
 
     private func validateManifest(_ manifest: PackageManifest, type: PackageType, packageRoot: URL) throws {
@@ -235,7 +303,9 @@ final class PackageManager {
             throw PackageManagerError.invalidManifest("Invalid package id format")
         }
 
-        try validateFileExists(in: packageRoot, path: "codexpet-package.json", label: "Manifest")
+        if FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent("codexpet-package.json").path) {
+            try validateFileExists(in: packageRoot, path: "codexpet-package.json", label: "Manifest")
+        }
         if let preview = manifest.preview {
             try validateFileExists(in: packageRoot, path: preview, label: "Preview")
         }

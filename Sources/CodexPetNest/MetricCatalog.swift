@@ -75,5 +75,8 @@ final class MetricCatalog {
         register(MetricDefinition(id: "system.time.is_weekend", kind: .boolean, description: "Whether today is a weekend"))
         register(MetricDefinition(id: "system.time.hhmm", kind: .text, description: "Current time in HH:mm format"))
         register(MetricDefinition(id: "system.date.short", kind: .text, description: "Current date in MM/dd format"))
+        
+        // Pet Metrics
+        register(MetricDefinition(id: "pet.name", kind: .text, description: "Display name of the currently active pet"))
     }
 }

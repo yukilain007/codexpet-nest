@@ -53,7 +53,8 @@ struct APIPet: Codable {
             tags: parseTags(tags_json),
             license: license ?? "MIT",
             downloads: download_count ?? 0,
-            updatedAt: updated_at ?? published_at ?? ""
+            updatedAt: updated_at ?? published_at ?? "",
+            detailUrl: normalizeURL(detailUrl, baseURL: baseURL)
         )
     }
     
@@ -230,6 +231,7 @@ struct PetDetail: Codable, Equatable, Identifiable {
     let license: String
     let downloads: Int
     let updatedAt: String
+    let detailUrl: String
 }
 
 struct PetDownloadMeta: Codable, Equatable {

@@ -15,6 +15,8 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     
     private var listTask: Task<Void, Never>?
     private var detailTask: Task<Void, Never>?
+    private var searchTimer: Timer?
+
     
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
@@ -39,10 +41,12 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     private let settingsButton = NSButton()
     private let statusLabel = NSTextField(labelWithString: "")
     private let websiteButton = NSButton()
+    private let viewOnWebsiteButton = NSButton()
     
     private var currentAnimationFrames: [NSImage] = []
     private var spritesheetImage: NSImage?
-    private var petSpriteConfig: PetSpriteConfig?
+    private var spriteDescriptor: SpriteSheetDescriptor?
+
 
 
     
@@ -184,6 +188,13 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         settingsButton.action = #selector(openCodexSettings)
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
         detailContainer.addSubview(settingsButton)
+
+        viewOnWebsiteButton.title = "View on codexpet.xyz"
+        viewOnWebsiteButton.bezelStyle = .rounded
+        viewOnWebsiteButton.target = self
+        viewOnWebsiteButton.action = #selector(openSelectedPetWebsite)
+        viewOnWebsiteButton.translatesAutoresizingMaskIntoConstraints = false
+        detailContainer.addSubview(viewOnWebsiteButton)
         
         NSLayoutConstraint.activate([
             searchField.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
@@ -245,7 +256,10 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
             installButton.widthAnchor.constraint(equalToConstant: 120),
             
             settingsButton.bottomAnchor.constraint(equalTo: detailContainer.bottomAnchor),
-            settingsButton.leadingAnchor.constraint(equalTo: installButton.trailingAnchor, constant: 12)
+            settingsButton.leadingAnchor.constraint(equalTo: installButton.trailingAnchor, constant: 12),
+
+            viewOnWebsiteButton.bottomAnchor.constraint(equalTo: detailContainer.bottomAnchor),
+            viewOnWebsiteButton.trailingAnchor.constraint(equalTo: detailContainer.trailingAnchor)
         ])
         
         detailContainer.isHidden = true
@@ -320,8 +334,12 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     }
     
     @objc private func searchChanged() {
-        loadData(search: searchField.stringValue)
+        searchTimer?.invalidate()
+        searchTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+            self?.loadData(search: self?.searchField.stringValue)
+        }
     }
+
     
     @objc private func installClicked() {
         guard let pet = selectedPet else { return }
@@ -339,7 +357,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
                     
                     let alert = NSAlert()
                     alert.messageText = "Pet Installed"
-                    alert.informativeText = "Pet '\(pet.name)' installed successfully. In Codex, open Settings -> Appearance and choose this pet."
+                    alert.informativeText = "Pet '\(pet.name)' installed successfully. Codex opened Settings. Please choose Appearance / Personalization / Pets and choose this pet."
                     alert.addButton(withTitle: "Open Codex Settings")
                     alert.addButton(withTitle: "OK")
                     if alert.runModal() == .alertFirstButtonReturn {
@@ -364,6 +382,14 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     @objc private func openWebsite() {
         NSWorkspace.shared.open(URL(string: "https://codexpet.xyz")!)
     }
+
+    @objc private func openSelectedPetWebsite() {
+        guard let pet = selectedPet else { return }
+        let urlStr = !pet.detailUrl.isEmpty ? pet.detailUrl : "https://codexpet.xyz/share/\(pet.id)"
+        if let url = URL(string: urlStr) {
+            NSWorkspace.shared.open(url)
+        }
+    }
     
     @objc private func actionChanged() {
         updateAnimation()
@@ -371,12 +397,19 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
 
     
     @objc private func openCodexSettings() {
-        let codexSettingsURL = URL(string: "codex://settings/general-settings")!
-        if NSWorkspace.shared.open(codexSettingsURL) {
-            return
+        // Try priority routes
+        let routes = [
+            "codex://settings/personalization",
+            "codex://settings/general-settings"
+        ]
+        
+        for route in routes {
+            if let url = URL(string: route), NSWorkspace.shared.open(url) {
+                return
+            }
         }
         
-        // Fallback
+        // Fallback to app itself
         let appPath = "/Applications/Codex.app"
         if FileManager.default.fileExists(atPath: appPath) {
             NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: appPath), configuration: NSWorkspace.OpenConfiguration())
@@ -401,6 +434,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         let isInstalled = PackageManager.shared.isPetInstalled(id: pet.id)
         installButton.title = isInstalled ? "Reinstall" : "Install"
         installButton.isEnabled = !isInstalling
+        viewOnWebsiteButton.isEnabled = true
         
         statusLabel.stringValue = "ID: \(pet.id) | Version: \(pet.version) | Downloads: \(pet.downloads)"
         
@@ -408,10 +442,34 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         detailTask?.cancel()
         detailTask = Task {
             if let url = URL(string: pet.previewUrl) {
-                if let data = try? Data(contentsOf: url), let image = NSImage(data: data) {
+                let image: NSImage?
+                if let cached = PetImageCache.shared.getSpritesheet(for: pet.previewUrl) {
+                    image = cached
+                } else {
+                    do {
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        image = NSImage(data: data)
+                        if let img = image {
+                            PetImageCache.shared.setSpritesheet(img, for: pet.previewUrl)
+                        }
+                    } catch {
+                        print("Failed to download spritesheet: \(error)")
+                        image = nil
+                    }
+                }
+                
+                if let img = image, !Task.isCancelled {
+                    let desc: SpriteSheetDescriptor?
+                    if let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                        desc = PetSpriteSheetRenderer.shared.detectDescriptor(cgImage: cg)
+                    } else {
+                        desc = nil
+                    }
+                    
                     await MainActor.run {
                         if self.selectedPet?.id == pet.id {
-                            self.spritesheetImage = image
+                            self.spritesheetImage = img
+                            self.spriteDescriptor = desc
                             self.actionSwitcher.selectedSegment = 0
                             self.updateAnimation()
                         }
@@ -422,22 +480,25 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     }
     
     private func updateAnimation() {
-        guard let image = spritesheetImage else { return }
+        guard let image = spritesheetImage, let desc = spriteDescriptor else { return }
         
+        let actions = ["idle", "walk", "sleep", "action"]
         let row = actionSwitcher.selectedSegment
-        let frames: [NSImage]
+        let actionName = row < actions.count ? actions[row] : "idle"
         
-        if let config = petSpriteConfig {
-            let actions = ["idle", "walk", "sleep", "action"]
-            let actionName = row < actions.count ? actions[row] : "idle"
-            frames = PetSpriteSheetRenderer.shared.extractAnimationFrames(from: image, action: actionName, config: config)
-        } else {
-            // Fallback to heuristic
-            frames = PetSpriteSheetRenderer.shared.extractFallbackAnimation(from: image, row: row)
+        if let cached = PetImageCache.shared.getAnimation(for: selectedPet?.id ?? "", action: actionName) {
+            previewView.setFrames(cached)
+            return
         }
         
+        let frames = PetSpriteSheetRenderer.shared.extractAnimationFrames(from: image, action: actionName, desc: desc)
+        if !frames.isEmpty {
+            PetImageCache.shared.setAnimation(frames, for: selectedPet?.id ?? "", action: actionName)
+        }
         previewView.setFrames(frames)
     }
+
+
 
     
     // MARK: - TableView
@@ -497,19 +558,43 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
             authorField.stringValue = pet.author
         }
         
-        // Async load thumbnail
+        // Async load thumbnail with caching
         cell?.imageView?.image = nil
+        
+        if let cached = PetImageCache.shared.getThumbnail(for: pet.id) {
+            cell?.imageView?.image = cached
+            return cell
+        }
+        
         Task {
             if let url = URL(string: pet.previewUrl) {
-                if let data = try? Data(contentsOf: url), let image = NSImage(data: data) {
-                    let thumbnail = PetSpriteSheetRenderer.shared.extractFirstFrame(from: image)
-                    await MainActor.run {
-                        // Check if row is still visible
-                        let currentRow = self.tableView.row(for: cell!)
-                        if currentRow == row {
-                            cell?.imageView?.image = thumbnail
+                do {
+                    let image: NSImage?
+                    if let cachedSheet = PetImageCache.shared.getSpritesheet(for: pet.previewUrl) {
+                        image = cachedSheet
+                    } else {
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        image = NSImage(data: data)
+                        if let img = image {
+                            PetImageCache.shared.setSpritesheet(img, for: pet.previewUrl)
                         }
                     }
+                    
+                    if let img = image {
+                        let thumbnail = PetSpriteSheetRenderer.shared.extractFirstFrame(from: img, petId: pet.id)
+                        if let thumb = thumbnail {
+                            PetImageCache.shared.setThumbnail(thumb, for: pet.id)
+                            await MainActor.run {
+                                let currentRow = self.tableView.row(for: cell!)
+                                if currentRow == row {
+                                    cell?.imageView?.image = thumb
+                                }
+                            }
+                        }
+                    }
+
+                } catch {
+                    print("Thumbnail load failed: \(error)")
                 }
             }
         }
@@ -545,25 +630,5 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     }
 }
 
-extension NSImage {
-    func firstFrame() -> NSImage {
-        let w = size.width
-        let h = size.height
-        if w == 0 || h == 0 { return self }
-        
-        // Heuristic: If it's a strip, take the square. 
-        // If it's 1:1, return self.
-        // If it's a grid (e.g. 400x400 with 80x80 frames), it's hard without meta.
-        // But most "previews" for pets are either 1:1 or horizontal strips.
-        let frameSize = min(w, h)
-        if w == h { return self }
-        
-        let rect = NSRect(x: 0, y: h - frameSize, width: frameSize, height: frameSize)
-        let target = NSImage(size: NSSize(width: frameSize, height: frameSize))
-        target.lockFocus()
-        self.draw(in: NSRect(origin: .zero, size: target.size), from: rect, operation: .copy, fraction: 1.0)
-        target.unlockFocus()
-        return target
-    }
-}
+
 

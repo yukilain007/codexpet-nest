@@ -7,7 +7,16 @@ struct PetManifest: Codable {
     let description: String
     let spritesheetPath: String
     let preview: String?
+    
+    // Advanced rendering meta
+    let frameWidth: Int?
+    let frameHeight: Int?
+    let frameSize: Int?
+    let columns: Int?
+    let rows: Int?
+    let animations: [String: PetAnimationConfig]?
 }
+
 
 struct LocalPet: Identifiable {
     let id: String
@@ -18,7 +27,9 @@ struct LocalPet: Identifiable {
     let path: String
     var isCurrent: Bool = false
     var isAppManaged: Bool = false
+    let manifest: PetManifest?
 }
+
 
 final class LocalPetManager: ObservableObject {
     static let shared = LocalPetManager()
@@ -90,8 +101,10 @@ final class LocalPetManager: ObservableObject {
                     preview: manifest.preview,
                     path: folderURL.path,
                     isCurrent: manifest.id == currentPetId,
-                    isAppManaged: SettingsStore.shared.settings.managedPetIds.contains(manifest.id)
+                    isAppManaged: SettingsStore.shared.settings.managedPetIds.contains(manifest.id),
+                    manifest: manifest
                 )
+
                 
                 foundPets.append(petObj)
             } catch {
