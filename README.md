@@ -179,7 +179,8 @@ codexpet-nest/
 
 ### 鸣谢 / Acknowledgements
 
-CodexPet Nest 的悬浮伴随窗口方案受 [codex-pet-limit-rings](https://github.com/petergpt/codex-pet-limit-rings) 启发——该项目由 petergpt 开发并以 MIT 协议开源，展示了一种无需修改 Codex 即可让透明置顶窗口跟随 Codex pet 移动的实现方式。
+- CodexPet Nest 的悬浮伴随窗口方案受 [codex-pet-limit-rings](https://github.com/petergpt/codex-pet-limit-rings) 启发——该项目由 petergpt 开发并以 MIT 协议开源，展示了一种无需修改 Codex 即可让透明置顶窗口跟随 Codex pet 移动的实现方式。
+- 特别感谢 [LINUX DO](https://linux.do) 社区的支持与灵感。
 
 CodexPet Nest 是一个独立项目，专注于宠物小窝、小组件、市场安装与创作者上传流程。除非后续项目材料中明确声明，否则 CodexPet Nest 与 codex-pet-limit-rings、petergpt、OpenAI 或 Codex 均无关联。
 
@@ -365,7 +366,8 @@ See [docs/architecture.md](docs/architecture.md) for details.
 
 ### Acknowledgements
 
-CodexPet Nest's companion-window approach was inspired by [codex-pet-limit-rings](https://github.com/petergpt/codex-pet-limit-rings)—an MIT-licensed project by petergpt that demonstrates how a transparent, always-on-top window can follow the active Codex pet without patching Codex.
+- CodexPet Nest's companion-window approach was inspired by [codex-pet-limit-rings](https://github.com/petergpt/codex-pet-limit-rings)—an MIT-licensed project by petergpt that demonstrates how a transparent, always-on-top window can follow the active Codex pet without patching Codex.
+- Special thanks to the [LINUX DO](https://linux.do) community for their support and inspiration.
 
 CodexPet Nest is an independent project focused on pet nests, widgets, marketplace installation, and creator workflows. Unless explicitly stated in future project materials, CodexPet Nest has no affiliation with codex-pet-limit-rings, petergpt, OpenAI, or Codex.
 
