@@ -28,6 +28,7 @@ struct APIPet: Codable {
     let sha256: String?
     let license: String?
     let updated_at: String?
+    let animations_json: String?
 
     func toPetItem(baseURL: String) -> PetItem {
         PetItem(
@@ -54,7 +55,11 @@ struct APIPet: Codable {
             license: license ?? "MIT",
             downloads: download_count ?? 0,
             updatedAt: updated_at ?? published_at ?? "",
-            detailUrl: normalizeURL(detailUrl, baseURL: baseURL)
+            detailUrl: normalizeURL(detailUrl, baseURL: baseURL),
+            animations: {
+                guard let json = animations_json, let data = json.data(using: .utf8) else { return nil }
+                return try? JSONDecoder().decode([String: PetAnimationConfig].self, from: data)
+            }()
         )
     }
     
@@ -232,6 +237,7 @@ struct PetDetail: Codable, Equatable, Identifiable {
     let downloads: Int
     let updatedAt: String
     let detailUrl: String
+    let animations: [String: PetAnimationConfig]?
 }
 
 struct PetDownloadMeta: Codable, Equatable {

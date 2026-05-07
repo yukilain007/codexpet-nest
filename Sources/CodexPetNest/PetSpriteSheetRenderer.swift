@@ -3,18 +3,26 @@ import AppKit
 import CoreGraphics
 import UniformTypeIdentifiers
 
-struct PetAnimationConfig: Codable {
+struct PetAnimationConfig: Codable, Equatable {
     let row: Int
     let frames: Int
     let fps: Double?
 }
 
-struct SpriteSheetDescriptor: Codable {
+struct SpriteSheetDescriptor: Codable, Equatable {
     let frameWidth: Int
     let frameHeight: Int
     let columns: Int
     let rows: Int
     let animations: [String: PetAnimationConfig]?
+}
+
+struct PetPreviewAction: Equatable {
+    let id: String
+    let label: String
+    let row: Int
+    let frames: Int?
+    let fps: Double?
 }
 
 final class PetSpriteSheetRenderer {
@@ -34,6 +42,19 @@ final class PetSpriteSheetRenderer {
             let fw = manifest["frameWidth"] as? Int ?? (manifest["frameSize"] as? Int)
             let fh = manifest["frameHeight"] as? Int ?? (manifest["frameSize"] as? Int)
             
+            let animations: [String: PetAnimationConfig]? = {
+                if let anims = manifest["animations"] as? [String: [String: Any]] {
+                    var result: [String: PetAnimationConfig] = [:]
+                    for (key, val) in anims {
+                        if let row = val["row"] as? Int, let frames = val["frames"] as? Int {
+                            result[key] = PetAnimationConfig(row: row, frames: frames, fps: val["fps"] as? Double)
+                        }
+                    }
+                    return result.isEmpty ? nil : result
+                }
+                return nil
+            }()
+            
             if let fw = fw, let fh = fh {
                 let cols = manifest["columns"] as? Int ?? (pixelWidth / fw)
                 let rows = manifest["rows"] as? Int ?? (pixelHeight / fh)
@@ -42,7 +63,7 @@ final class PetSpriteSheetRenderer {
                     frameHeight: fh,
                     columns: cols,
                     rows: rows,
-                    animations: nil
+                    animations: animations
                 )
             }
         }
@@ -123,14 +144,52 @@ final class PetSpriteSheetRenderer {
         return NSImage(cgImage: cropped, size: NSSize(width: fw, height: fh))
     }
     
-    func extractAnimationFrames(from image: NSImage, action: String, desc: SpriteSheetDescriptor) -> [NSImage] {
+    func previewActions(for descriptor: SpriteSheetDescriptor) -> [PetPreviewAction] {
+        if let anims = descriptor.animations, !anims.isEmpty {
+            return anims.map { (key, config) in
+                PetPreviewAction(
+                    id: key,
+                    label: key.replacingOccurrences(of: "-", with: " ").capitalized,
+                    row: config.row,
+                    frames: config.frames,
+                    fps: config.fps
+                )
+            }.sorted { $0.row < $1.row }
+        }
+        
+        let defaults = [
+            ("idle", "Idle"),
+            ("running-right", "Running right"),
+            ("running-left", "Running left"),
+            ("waving", "Waving"),
+            ("jumping", "Jumping"),
+            ("failed", "Failed"),
+            ("waiting", "Waiting"),
+            ("running", "Running"),
+            ("review", "Review")
+        ]
+        
+        return defaults.enumerated().compactMap { index, item in
+            if index >= descriptor.rows { return nil }
+            return PetPreviewAction(
+                id: item.0,
+                label: item.1,
+                row: index,
+                frames: nil,
+                fps: nil
+            )
+        }
+    }
+    
+    func extractAnimationFrames(from image: NSImage, action: PetPreviewAction, desc: SpriteSheetDescriptor) -> [NSImage] {
         guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return [] }
         
-        let row = rowForAction(action)
+        let row = action.row
         if row >= desc.rows { return [] }
         
         var frames: [NSImage] = []
-        let maxFramesPerRow = min(desc.columns, 8)
+        let frameCount = action.frames ?? desc.columns
+        let maxFramesPerRow = min(desc.columns, frameCount)
         
         for col in 0..<maxFramesPerRow {
             let x = col * desc.frameWidth
@@ -146,15 +205,6 @@ final class PetSpriteSheetRenderer {
         return frames
     }
     
-    private func rowForAction(_ action: String) -> Int {
-        switch action.lowercased() {
-        case "idle": return 0
-        case "walk": return 1
-        case "sleep": return 2
-        case "action": return 3
-        default: return 0
-        }
-    }
     
     /// Checks if a CGImage is effectively empty (all transparent)
     private func isCGImageEmpty(_ cgImage: CGImage) -> Bool {

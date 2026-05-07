@@ -36,7 +36,8 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     private let metaLabel = NSTextField(labelWithString: "")
     private let tagsLabel = NSTextField(labelWithString: "")
     private let previewView = AnimatedSpritePreviewView()
-    private let actionSwitcher = NSSegmentedControl()
+    private let actionPopup = NSPopUpButton()
+    private var previewActions: [PetPreviewAction] = []
     private let installButton = NSButton()
     private let settingsButton = NSButton()
     private let statusLabel = NSTextField(labelWithString: "")
@@ -135,16 +136,10 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         previewView.translatesAutoresizingMaskIntoConstraints = false
         detailContainer.addSubview(previewView)
         
-        actionSwitcher.segmentCount = 4
-        actionSwitcher.setLabel("Idle", forSegment: 0)
-        actionSwitcher.setLabel("Walk", forSegment: 1)
-        actionSwitcher.setLabel("Sleep", forSegment: 2)
-        actionSwitcher.setLabel("Action", forSegment: 3)
-        actionSwitcher.selectedSegment = 0
-        actionSwitcher.target = self
-        actionSwitcher.action = #selector(actionChanged)
-        actionSwitcher.translatesAutoresizingMaskIntoConstraints = false
-        detailContainer.addSubview(actionSwitcher)
+        actionPopup.target = self
+        actionPopup.action = #selector(actionChanged)
+        actionPopup.translatesAutoresizingMaskIntoConstraints = false
+        detailContainer.addSubview(actionPopup)
         
         nameLabel.font = .boldSystemFont(ofSize: 22)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -227,10 +222,11 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
             previewView.trailingAnchor.constraint(equalTo: detailContainer.trailingAnchor),
             previewView.heightAnchor.constraint(equalToConstant: 280),
             
-            actionSwitcher.topAnchor.constraint(equalTo: previewView.bottomAnchor, constant: 12),
-            actionSwitcher.centerXAnchor.constraint(equalTo: detailContainer.centerXAnchor),
+            actionPopup.topAnchor.constraint(equalTo: previewView.bottomAnchor, constant: 12),
+            actionPopup.centerXAnchor.constraint(equalTo: detailContainer.centerXAnchor),
+            actionPopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 120),
             
-            nameLabel.topAnchor.constraint(equalTo: actionSwitcher.bottomAnchor, constant: 16),
+            nameLabel.topAnchor.constraint(equalTo: actionPopup.bottomAnchor, constant: 16),
             nameLabel.leadingAnchor.constraint(equalTo: detailContainer.leadingAnchor),
             nameLabel.trailingAnchor.constraint(equalTo: detailContainer.trailingAnchor),
             
@@ -459,19 +455,35 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
                 }
                 
                 if let img = image, !Task.isCancelled {
-                    let desc: SpriteSheetDescriptor?
-                    if let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-                        desc = PetSpriteSheetRenderer.shared.detectDescriptor(cgImage: cg)
-                        PetSpriteSheetRenderer.shared.debugExportContactSheet(cgImage: cg, desc: desc!, petId: pet.id)
-                    } else {
-                        desc = nil
-                    }
-                    
                     await MainActor.run {
                         if self.selectedPet?.id == pet.id {
                             self.spritesheetImage = img
-                            self.spriteDescriptor = desc
-                            self.actionSwitcher.selectedSegment = 0
+                            
+                            guard let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+                            
+                            // Create manifest dict for animations if available
+                            var manifestDict: [String: Any] = [:]
+                            if let anims = pet.animations {
+                                // Convert to [String: [String: Any]] for detectDescriptor
+                                var animsDict: [String: [String: Any]] = [:]
+                                for (key, cfg) in anims {
+                                    var cfgDict: [String: Any] = ["row": cfg.row, "frames": cfg.frames]
+                                    if let fps = cfg.fps { cfgDict["fps"] = fps }
+                                    animsDict[key] = cfgDict
+                                }
+                                manifestDict["animations"] = animsDict
+                            }
+                            
+                            self.spriteDescriptor = PetSpriteSheetRenderer.shared.detectDescriptor(cgImage: cg, manifest: manifestDict)
+                            self.previewActions = PetSpriteSheetRenderer.shared.previewActions(for: self.spriteDescriptor!)
+                            
+                            // Rebuild popup
+                            self.actionPopup.removeAllItems()
+                            for action in self.previewActions {
+                                self.actionPopup.addItem(withTitle: action.label)
+                            }
+                            self.actionPopup.selectItem(at: 0)
+                            
                             self.updateAnimation()
                         }
                     }
@@ -483,18 +495,19 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     private func updateAnimation() {
         guard let image = spritesheetImage, let desc = spriteDescriptor else { return }
         
-        let actions = ["idle", "walk", "sleep", "action"]
-        let row = actionSwitcher.selectedSegment
-        let actionName = row < actions.count ? actions[row] : "idle"
+        let index = actionPopup.indexOfSelectedItem
+        guard index >= 0, index < previewActions.count else { return }
+        let action = previewActions[index]
         
-        if let cached = PetImageCache.shared.getAnimation(for: selectedPet?.id ?? "", action: actionName) {
+        let petId = selectedPet?.id ?? ""
+        if let cached = PetImageCache.shared.getAnimation(for: petId, action: action.id) {
             previewView.setFrames(cached)
             return
         }
         
-        let frames = PetSpriteSheetRenderer.shared.extractAnimationFrames(from: image, action: actionName, desc: desc)
+        let frames = PetSpriteSheetRenderer.shared.extractAnimationFrames(from: image, action: action, desc: desc)
         if !frames.isEmpty {
-            PetImageCache.shared.setAnimation(frames, for: selectedPet?.id ?? "", action: actionName)
+            PetImageCache.shared.setAnimation(frames, for: petId, action: action.id)
         }
         previewView.setFrames(frames)
     }

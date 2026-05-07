@@ -45,7 +45,8 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
     private var cancellables = Set<AnyCancellable>()
     
     private let previewView = AnimatedSpritePreviewView()
-    private let actionSwitcher = NSSegmentedControl()
+    private let actionPopup = NSPopUpButton()
+    private var previewActions: [PetPreviewAction] = []
     private var spritesheetImage: NSImage?
     private var spriteDescriptor: SpriteSheetDescriptor?
 
@@ -133,16 +134,10 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         previewView.layer?.cornerRadius = 8
         detailView.addSubview(previewView)
         
-        actionSwitcher.segmentCount = 4
-        actionSwitcher.setLabel("Idle", forSegment: 0)
-        actionSwitcher.setLabel("Walk", forSegment: 1)
-        actionSwitcher.setLabel("Sleep", forSegment: 2)
-        actionSwitcher.setLabel("Action", forSegment: 3)
-        actionSwitcher.selectedSegment = 0
-        actionSwitcher.target = self
-        actionSwitcher.action = #selector(actionChanged)
-        actionSwitcher.frame = NSRect(x: 20, y: 110, width: 340, height: 25)
-        detailView.addSubview(actionSwitcher)
+        actionPopup.target = self
+        actionPopup.action = #selector(actionChanged)
+        actionPopup.frame = NSRect(x: 20, y: 110, width: 200, height: 25)
+        detailView.addSubview(actionPopup)
         
         descLabel.frame = NSRect(x: 20, y: 55, width: 340, height: 50)
         detailView.addSubview(descLabel)
@@ -202,10 +197,21 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
                     if let r = m.rows { manifestDict["rows"] = r }
                 }
                 self.spriteDescriptor = PetSpriteSheetRenderer.shared.detectDescriptor(cgImage: cg, manifest: manifestDict)
+                self.previewActions = PetSpriteSheetRenderer.shared.previewActions(for: self.spriteDescriptor!)
+                
+                // Rebuild popup
+                actionPopup.removeAllItems()
+                for action in self.previewActions {
+                    actionPopup.addItem(withTitle: action.label)
+                }
+                actionPopup.selectItem(at: 0)
+                
                 PetSpriteSheetRenderer.shared.debugExportContactSheet(cgImage: cg, desc: self.spriteDescriptor!, petId: pet.id)
             }
             updateAnimation()
         } else {
+            self.previewActions = []
+            actionPopup.removeAllItems()
             previewView.setFrames([])
         }
         
@@ -222,18 +228,18 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         if row < 0 || row >= pets.count { return }
         let pet = pets[row]
         
-        let actions = ["idle", "walk", "sleep", "action"]
-        let seg = actionSwitcher.selectedSegment
-        let actionName = seg < actions.count ? actions[seg] : "idle"
+        let index = actionPopup.indexOfSelectedItem
+        guard index >= 0, index < previewActions.count else { return }
+        let action = previewActions[index]
         
-        if let cached = PetImageCache.shared.getAnimation(for: pet.id, action: actionName) {
+        if let cached = PetImageCache.shared.getAnimation(for: pet.id, action: action.id) {
             previewView.setFrames(cached)
             return
         }
         
-        let frames = PetSpriteSheetRenderer.shared.extractAnimationFrames(from: image, action: actionName, desc: desc)
+        let frames = PetSpriteSheetRenderer.shared.extractAnimationFrames(from: image, action: action, desc: desc)
         if !frames.isEmpty {
-            PetImageCache.shared.setAnimation(frames, for: pet.id, action: actionName)
+            PetImageCache.shared.setAnimation(frames, for: pet.id, action: action.id)
         }
         previewView.setFrames(frames)
     }
