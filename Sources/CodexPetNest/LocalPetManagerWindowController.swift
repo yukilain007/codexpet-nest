@@ -7,7 +7,7 @@ final class LocalPetManagerWindowController: NSWindowController {
     private init() {
         let vc = LocalPetManagerViewController()
         let window = NSWindow(contentViewController: vc)
-        window.title = "Manage Pets"
+        window.title = l("context.manage_pets")
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 600, height: 420))
         window.center()
@@ -27,7 +27,7 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
     private let detailView = NSView()
-    private let emptyLabel = NSTextField(labelWithString: "No pets found in ~/.codex/pets/")
+    private let emptyLabel = NSTextField(labelWithString: l("manage.no_pets_found"))
     
     private let nameLabel = NSTextField(labelWithString: "")
     private let idLabel = NSTextField(labelWithString: "")
@@ -35,11 +35,11 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
     private let statusLabel = NSTextField(labelWithString: "")
     private let previewImage = NSImageView()
     
-    private let openFinderBtn = NSButton(title: "Open in Finder", target: nil, action: nil)
-    private let uninstallBtn = NSButton(title: "Delete Pet", target: nil, action: nil)
-    private let browseMarketplaceBtn = NSButton(title: "Add / Browse Pets", target: nil, action: nil)
-    private let installBtn = NSButton(title: "Install Local Pet ZIP...", target: nil, action: nil)
-    private let openCodexSettingsBtn = NSButton(title: "Open Codex Settings", target: nil, action: nil)
+    private let openFinderBtn = NSButton(title: l("manage.open_in_finder"), target: nil, action: nil)
+    private let uninstallBtn = NSButton(title: l("manage.delete_pet"), target: nil, action: nil)
+    private let browseMarketplaceBtn = NSButton(title: l("manage.add_browse_pets"), target: nil, action: nil)
+    private let installBtn = NSButton(title: l("manage.install_local_pet"), target: nil, action: nil)
+    private let openCodexSettingsBtn = NSButton(title: l("manage.open_codex_settings"), target: nil, action: nil)
     
     private var pets: [LocalPet] = []
     private var cancellables = Set<AnyCancellable>()
@@ -172,10 +172,10 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         descLabel.stringValue = pet.description
         
         if pet.isCurrent {
-            statusLabel.stringValue = "● Currently active in Codex"
+            statusLabel.stringValue = l("manage.currently_active")
             statusLabel.textColor = .systemGreen
         } else {
-            statusLabel.stringValue = "Inactive"
+            statusLabel.stringValue = l("manage.inactive")
             statusLabel.textColor = .secondaryLabelColor
         }
         
@@ -215,7 +215,7 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
             previewView.setFrames([])
         }
         
-        uninstallBtn.title = pet.isAppManaged ? "Delete Pet" : "Remove Folder"
+        uninstallBtn.title = pet.isAppManaged ? l("manage.delete_pet") : l("manage.remove_folder")
     }
     
     @objc private func actionChanged() {
@@ -264,10 +264,10 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         
         if pet.isCurrent {
             let alert = NSAlert()
-            alert.messageText = "Cannot Uninstall Active Pet"
-            alert.informativeText = "'\(pet.displayName)' is currently active in Codex. Codex opened Settings, please manually go to Appearance / Personalization / Pets and switch to another pet first."
-            alert.addButton(withTitle: "Open Codex Settings")
-            alert.addButton(withTitle: "OK")
+            alert.messageText = l("manage.cannot_uninstall_active_title")
+            alert.informativeText = l("manage.cannot_uninstall_active_message", pet.displayName)
+            alert.addButton(withTitle: l("manage.open_codex_settings"))
+            alert.addButton(withTitle: l("ok"))
             if alert.runModal() == .alertFirstButtonReturn {
                 openCodexSettings()
             }
@@ -275,14 +275,13 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         }
 
         let alert = NSAlert()
-        alert.messageText = "Uninstall Pet?"
-        alert.informativeText = "Are you sure you want to remove '\(pet.displayName)' (\(pet.id))?\n\nPath: \(pet.path)"
+        alert.messageText = l("manage.uninstall_pet_title")
+        alert.informativeText = l("manage.uninstall_pet_message", pet.displayName, pet.id, pet.path)
         if !pet.isAppManaged {
-            alert.messageText = "Confirm Deleting Local Pet"
-            alert.informativeText += "\n\nWarning: This pet was NOT installed by CodexPet Nest. Deleting it will permanently remove the folder from your system."
+            alert.informativeText += l("manage.uninstall_pet_local_warning")
         }
-        alert.addButton(withTitle: "Uninstall")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: l("manage.uninstall"))
+        alert.addButton(withTitle: l("cancel"))
         alert.alertStyle = .warning
         
         if alert.runModal() == .alertFirstButtonReturn {
@@ -310,10 +309,10 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
                     try await PackageManager.shared.installLocalPet(zipURL: url)
                     await MainActor.run {
                         let successAlert = NSAlert()
-                        successAlert.messageText = "Pet Installed"
-                        successAlert.informativeText = "Pet installed. Codex opened Settings. Please choose Appearance / Personalization / Pets and choose this pet."
-                        successAlert.addButton(withTitle: "Open Codex Settings")
-                        successAlert.addButton(withTitle: "OK")
+                        successAlert.messageText = l("manage.pet_installed_title")
+                        successAlert.informativeText = l("manage.pet_installed_message")
+                        successAlert.addButton(withTitle: l("manage.open_codex_settings"))
+                        successAlert.addButton(withTitle: l("ok"))
                         if successAlert.runModal() == .alertFirstButtonReturn {
                             self?.openCodexSettings()
                         }
@@ -347,8 +346,8 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
             NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: appPath), configuration: NSWorkspace.OpenConfiguration())
         } else {
             let alert = NSAlert()
-            alert.messageText = "Could not open Codex"
-            alert.informativeText = "Codex.app was not found in /Applications."
+            alert.messageText = l("manage.could_not_open_codex")
+            alert.informativeText = l("manage.codex_not_found")
             alert.runModal()
         }
     }
@@ -385,7 +384,7 @@ final class LocalPetManagerViewController: NSViewController, NSTableViewDataSour
         }
         
         var display = pet.displayName
-        if pet.isCurrent { display += " (Active)" }
+        if pet.isCurrent { display += l("manage.active_suffix") }
         cell?.textField?.stringValue = display
         cell?.textField?.textColor = pet.isCurrent ? .systemGreen : .labelColor
         

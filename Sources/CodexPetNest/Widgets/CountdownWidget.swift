@@ -2,7 +2,7 @@ import AppKit
 
 final class CountdownWidget: NSView {
     private let label = NSTextField(labelWithString: "")
-    private let setButton = NSButton(title: "Set", target: nil, action: nil)
+    private let setButton = NSButton(title: l("widget.countdown.set"), target: nil, action: nil)
     private var timer: Timer?
 
     override init(frame: NSRect) {
@@ -83,7 +83,7 @@ final class CountdownPickerViewController: NSViewController {
         if let t = target() { picker.dateValue = t }
         view.addSubview(picker)
 
-        let done = NSButton(title: "Set Countdown", target: self, action: #selector(commit))
+        let done = NSButton(title: l("widget.countdown.set_title"), target: self, action: #selector(commit))
         done.frame = NSRect(x: 20, y: 100, width: 160, height: 24)
         view.addSubview(done)
     }

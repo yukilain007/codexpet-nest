@@ -28,6 +28,8 @@ final class QuickActionRunner {
                 try await runShortcut(target: action.target)
             case .terminal:
                 try await runTerminalCommand(target: action.target, action: action)
+            case .url:
+                try await runURL(target: action.target)
             }
         } catch {
             await MainActor.run {
@@ -110,17 +112,40 @@ final class QuickActionRunner {
             throw QuickActionRunnerError.terminalRejected
         }
 
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        task.arguments = ["-c", target]
+        // Open command in a visible Terminal window via AppleScript
+        let escaped = target.replacingOccurrences(of: "\\", with: "\\\\")
+                             .replacingOccurrences(of: "\"", with: "\\\"")
+        let script = "tell application \"Terminal\"\n    activate\n    do script \"\(escaped)\"\nend tell"
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            task.terminationHandler = { _ in continuation.resume() }
-            do {
-                try task.run()
-            } catch {
-                continuation.resume(throwing: error)
+            var error: NSDictionary?
+            if let appleScript = NSAppleScript(source: script) {
+                appleScript.executeAndReturnError(&error)
+            }
+            if let error = error {
+                let message = (error[NSAppleScript.errorMessage] as? String) ?? "Unknown error"
+                continuation.resume(throwing: QuickActionRunnerError.shortcutFailed(message))
+            } else {
+                continuation.resume()
             }
         }
+    }
+
+    // MARK: - URL
+
+    @MainActor
+    private func openURL(_ url: URL) {
+        NSWorkspace.shared.open(url)
+    }
+
+    private func runURL(target: String) async throws {
+        var urlString = target.trimmingCharacters(in: .whitespaces)
+        if !urlString.hasPrefix("http://"), !urlString.hasPrefix("https://") {
+            urlString = "https://" + urlString
+        }
+        guard let url = URL(string: urlString) else {
+            throw QuickActionRunnerError.shortcutFailed("Invalid URL: \(target)")
+        }
+        await openURL(url)
     }
 }

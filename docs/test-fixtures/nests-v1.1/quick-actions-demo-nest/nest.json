@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0.0",
+  "canvas": { "width": 240, "height": 180, "background": "transparent" },
+  "petSlot": {
+    "id": "primary",
+    "frame": { "x": 67, "y": 41, "width": 96, "height": 96 },
+    "anchor": "bottom-center",
+    "defaultAction": "idle",
+    "zIndex": 20
+  },
+  "layers": [],
+  "components": [
+    {
+      "id": "clockText-1778476674139",
+      "component": "official.time.clockText",
+      "frame": { "x": 22, "y": 9, "width": 192, "height": 32 },
+      "props": { "fontSize": 16, "color": "#FFFFFF", "showLabel": false },
+      "zIndex": 30
+    },
+    {
+      "id": "quickActions-1778476640748",
+      "component": "official.actions.quickActions",
+      "frame": { "x": 18, "y": 139, "width": 192, "height": 32 },
+      "props": { "trigger": "petHover", "direction": "right", "iconStyle": "bubble", "maxItems": 5, "showLabels": false },
+      "zIndex": 30
+    }
+  ]
+}

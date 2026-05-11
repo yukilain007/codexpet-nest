@@ -52,7 +52,7 @@ final class QuickActionsComponent: NSView, OfficialComponentRenderer {
         stackView.orientation = .horizontal
         stackView.spacing = 6
         stackView.alignment = .centerY
-        stackView.distribution = .equalSpacing
+        stackView.distribution = .fill
         addSubview(stackView)
 
         setupHoverTracking()
@@ -82,17 +82,38 @@ final class QuickActionsComponent: NSView, OfficialComponentRenderer {
 
     override func mouseEntered(with event: NSEvent) {
         guard trigger != "click" else { return }
-        expandActions()
+        // Temporarily disabled to prevent layout jumps
+        // expandActions()
     }
 
     override func mouseExited(with event: NSEvent) {
         guard trigger != "click" else { return }
-        collapseActions()
+        // Temporarily disabled to prevent layout jumps
+        // collapseActions()
     }
 
     override func mouseDown(with event: NSEvent) {
+        if QuickActionConfigStore.shared.enabledActions(for: nestId).isEmpty {
+            openConfigWindow()
+            return
+        }
         if trigger == "click" {
             isExpanded ? collapseActions() : expandActions()
+        }
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        openConfigWindow()
+    }
+
+    private func openConfigWindow() {
+        QuickActionsConfigWindowController.shared.show(for: nestId)
+    }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        if QuickActionConfigStore.shared.enabledActions(for: nestId).isEmpty {
+            addCursorRect(bounds, cursor: .pointingHand)
         }
     }
 
@@ -126,15 +147,40 @@ final class QuickActionsComponent: NSView, OfficialComponentRenderer {
         stackView.isHidden = false
 
         let limit = min(actions.count, maxItems)
+        
+        let leadingSpacer = NSView()
+        leadingSpacer.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(leadingSpacer)
+        
         for action in actions.prefix(limit) {
             let btn = makeActionButton(for: action)
             stackView.addArrangedSubview(btn)
         }
+        
+        let trailingSpacer = NSView()
+        trailingSpacer.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(trailingSpacer)
+        
+        leadingSpacer.widthAnchor.constraint(equalTo: trailingSpacer.widthAnchor).isActive = true
+    }
+
+    private func kindLetter(_ kind: QuickActionKind) -> String {
+        switch kind {
+        case .app:       return "A"
+        case .terminal:  return "T"
+        case .shortcut:  return "S"
+        case .url:       return "U"
+        }
     }
 
     private func makeActionButton(for action: QuickActionConfig) -> NSView {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 32, height: 32))
+        let container = HoverButtonView(frame: NSRect(x: 0, y: 0, width: 32, height: 32))
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        container.heightAnchor.constraint(equalToConstant: 32).isActive = true
         container.wantsLayer = true
+        container.layer?.cornerRadius = 12
+        container.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
         let btn = NSButton(frame: container.bounds)
         btn.title = showLabels ? action.name : ""
@@ -142,14 +188,15 @@ final class QuickActionsComponent: NSView, OfficialComponentRenderer {
         btn.isBordered = false
         btn.wantsLayer = true
         btn.layer?.cornerRadius = 12
-        btn.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        btn.layer?.backgroundColor = NSColor.clear.cgColor
 
         if let symbolImage = NSImage(systemSymbolName: action.icon, accessibilityDescription: action.name) {
             btn.image = symbolImage
             btn.imagePosition = showLabels ? .imageLeading : .imageOnly
         } else {
-            btn.title = String(action.name.prefix(2))
-            btn.font = .systemFont(ofSize: 10, weight: .medium)
+            btn.title = kindLetter(action.kind)
+            btn.font = .systemFont(ofSize: 16, weight: .bold)
+            btn.contentTintColor = .white.withAlphaComponent(0.9)
         }
 
         btn.target = self
@@ -157,6 +204,7 @@ final class QuickActionsComponent: NSView, OfficialComponentRenderer {
 
         objc_setAssociatedObject(btn, &quickActionConfigKey, action, .OBJC_ASSOCIATION_RETAIN)
         container.addSubview(btn)
+        container.actionButton = btn
         return container
     }
 
@@ -183,3 +231,36 @@ final class QuickActionsComponent: NSView, OfficialComponentRenderer {
 import ObjectiveC
 
 private var quickActionConfigKey: UInt8 = 0
+
+private final class HoverButtonView: NSView {
+    weak var actionButton: NSButton?
+
+    private var trackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        animateBackground(to: NSColor.white.withAlphaComponent(0.28).cgColor)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        animateBackground(to: NSColor.white.withAlphaComponent(0.12).cgColor)
+    }
+
+    private func animateBackground(to color: CGColor) {
+        layer?.backgroundColor = color
+    }
+}

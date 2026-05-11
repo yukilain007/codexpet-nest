@@ -8,7 +8,8 @@ final class BuiltInNestInstaller {
     private let builtInNestIds = [
         "basket-pomodoro-nest",
         "legend-status-nest",
-        "window-desk-nest"
+        "window-desk-nest",
+        "quick-actions-demo-nest"
     ]
     
     private init() {

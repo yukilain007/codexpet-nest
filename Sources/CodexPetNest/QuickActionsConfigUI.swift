@@ -14,7 +14,7 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered, defer: false
         )
-        window.title = "Configure Quick Actions"
+        window.title = l("qa.title")
         window.center()
         super.init(window: window)
         setupUI()
@@ -57,6 +57,8 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
 
+        tableView.registerForDraggedTypes([.quickActionRow])
+
         scrollView.documentView = tableView
         contentView.addSubview(scrollView)
 
@@ -66,15 +68,15 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
         bottomBar.spacing = 8
         bottomBar.alignment = .centerY
 
-        let addBtn = NSButton(title: "+", target: self, action: #selector(addAction))
+        let addBtn = NSButton(title: l("qa.add"), target: self, action: #selector(addAction))
         addBtn.bezelStyle = .rounded
 
-        let editBtn = NSButton(title: "Edit", target: self, action: #selector(editAction))
-        let deleteBtn = NSButton(title: "Delete", target: self, action: #selector(deleteAction))
-        let upBtn = NSButton(title: "Up", target: self, action: #selector(moveActionUp))
-        let downBtn = NSButton(title: "Down", target: self, action: #selector(moveActionDown))
+        let editBtn = NSButton(title: l("qa.edit"), target: self, action: #selector(editAction))
+        let deleteBtn = NSButton(title: l("qa.delete"), target: self, action: #selector(deleteAction))
+        let upBtn = NSButton(title: l("qa.up"), target: self, action: #selector(moveActionUp))
+        let downBtn = NSButton(title: l("qa.down"), target: self, action: #selector(moveActionDown))
 
-        let refreshBtn = NSButton(title: "Refresh", target: self, action: #selector(refreshFromStore))
+        let refreshBtn = NSButton(title: l("manage.refresh"), target: self, action: #selector(refreshFromStore))
 
         bottomBar.addArrangedSubview(addBtn)
         bottomBar.addArrangedSubview(editBtn)
@@ -103,6 +105,46 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
 
     func numberOfRows(in tableView: NSTableView) -> Int { actions.count }
 
+    func tableView(_ tableView: NSTableView, writeRowsWith rowIndexes: IndexSet, to pboard: NSPasteboard) -> Bool {
+        let data = try? NSKeyedArchiver.archivedData(withRootObject: rowIndexes, requiringSecureCoding: false)
+        pboard.declareTypes([.quickActionRow], owner: self)
+        pboard.setData(data, forType: .quickActionRow)
+        return true
+    }
+
+    func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
+        guard dropOperation == .above else { return [] }
+        return .move
+    }
+
+    func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
+        guard let data = info.draggingPasteboard.data(forType: .quickActionRow),
+              let rowIndexes = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSIndexSet.self, from: data) as? IndexSet,
+              let fromRow = rowIndexes.first else {
+            return false
+        }
+
+        var toRow = row
+        if fromRow < toRow {
+            toRow -= 1 // Adjust insertion index if moving downwards
+        }
+
+        guard fromRow != toRow else { return false }
+
+        let store = QuickActionConfigStore.shared
+        let actionToMove = actions.remove(at: fromRow)
+        actions.insert(actionToMove, at: toRow)
+
+        for (index, var action) in actions.enumerated() {
+            action.order = index
+            store.update(action)
+        }
+
+        tableView.reloadData()
+        postRefreshNotification()
+        return true
+    }
+
     // MARK: - NSTableViewDelegate
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -116,13 +158,13 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
         iconView.imageScaling = .scaleProportionallyUpOrDown
         if let symbol = NSImage(systemSymbolName: action.icon, accessibilityDescription: action.name) {
             iconView.image = symbol
-            iconView.contentTintColor = .white
+            iconView.contentTintColor = .labelColor
         }
 
         let nameLabel = NSTextField(labelWithString: action.name)
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = .systemFont(ofSize: 13, weight: .medium)
-        nameLabel.textColor = .white
+        nameLabel.textColor = .labelColor
 
         let kindLabel = NSTextField(labelWithString: action.kind.rawValue.capitalized)
         kindLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -177,13 +219,13 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
     }
 
     @objc private func editAction() {
-        let row = tableView.clickedRow
+        let row = tableView.selectedRow
         guard row >= 0, row < actions.count else { return }
         presentEditSheet(for: actions[row])
     }
 
     @objc private func deleteAction() {
-        let row = tableView.clickedRow
+        let row = tableView.selectedRow
         guard row >= 0, row < actions.count else { return }
         let action = actions[row]
         QuickActionConfigStore.shared.delete(id: action.id, nestId: nestId)
@@ -192,13 +234,13 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
     }
 
     @objc private func moveActionUp() {
-        let row = tableView.clickedRow
+        let row = tableView.selectedRow
         guard row > 0, row < actions.count else { return }
         swapOrder(row, row - 1)
     }
 
     @objc private func moveActionDown() {
-        let row = tableView.clickedRow
+        let row = tableView.selectedRow
         guard row >= 0, row < actions.count - 1 else { return }
         swapOrder(row, row + 1)
     }
@@ -240,13 +282,13 @@ final class QuickActionsConfigWindowController: NSWindowController, NSTableViewD
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false
         )
-        sheet.title = existing == nil ? "Add Quick Action" : "Edit Quick Action"
+        sheet.title = existing == nil ? l("qa.add_title") : l("qa.edit_title")
 
         let isNew = existing == nil
         let editAction = existing ?? QuickActionConfig(
             nestId: nestId,
             name: "",
-            icon: "bolt.fill",
+            icon: "app.fill",
             kind: .app,
             target: "",
             enabled: true,
@@ -281,7 +323,9 @@ final class QuickActionEditForm: NSViewController, NSTextFieldDelegate {
     private var nameField: NSTextField!
     private var iconField: NSTextField!
     private var kindPopup: NSPopUpButton!
-    private var targetField: NSTextField!
+    private var targetField: DropTargetTextField!
+    private var browseBtn: NSButton!
+    private var confirmRow: NSStackView!
     private var confirmCheckbox: NSButton!
     private var errorLabel: NSTextField!
 
@@ -310,42 +354,59 @@ final class QuickActionEditForm: NSViewController, NSTextFieldDelegate {
         formStack.translatesAutoresizingMaskIntoConstraints = false
 
         // Name
-        let nameRow = makeRow(label: "Name")
+        let nameRow = makeRow(label: l("qa.name"))
         nameField = makeTextField(placeholder: "E.g. Open Terminal")
         nameField.stringValue = action.name
         nameRow.addArrangedSubview(nameField)
         formStack.addArrangedSubview(nameRow)
 
         // Icon
-        let iconRow = makeRow(label: "Icon")
+        let iconRow = makeRow(label: l("qa.icon"))
         iconField = makeTextField(placeholder: "SF Symbol name, e.g. terminal.fill")
         iconField.stringValue = action.icon
         iconRow.addArrangedSubview(iconField)
         formStack.addArrangedSubview(iconRow)
 
         // Kind
-        let kindRow = makeRow(label: "Kind")
+        let kindRow = makeRow(label: l("qa.kind"))
         kindPopup = NSPopUpButton()
         kindPopup.translatesAutoresizingMaskIntoConstraints = false
         kindPopup.addItems(withTitles: QuickActionKind.allCases.map { $0.rawValue.capitalized })
         if let idx = QuickActionKind.allCases.firstIndex(of: action.kind) {
             kindPopup.selectItem(at: idx)
         }
+        kindPopup.target = self
+        kindPopup.action = #selector(kindChanged)
         kindRow.addArrangedSubview(kindPopup)
         formStack.addArrangedSubview(kindRow)
 
         // Target
-        let targetRow = makeRow(label: "Target")
-        targetField = makeTextField(placeholder: "/Applications/App.app, shortcut name, or shell command")
+        let targetRow = makeRow(label: l("qa.target"))
+        targetField = DropTargetTextField()
+        targetField.translatesAutoresizingMaskIntoConstraints = false
+        targetField.font = .systemFont(ofSize: 13)
+        targetField.isEditable = true
+        targetField.isSelectable = true
         targetField.stringValue = action.target
+        targetField.onAppDropped = { [weak self] path in
+            self?.targetField.stringValue = path
+        }
+        updateTargetPlaceholder()
         targetRow.addArrangedSubview(targetField)
+
+        browseBtn = NSButton(title: "Browse...", target: self, action: #selector(browseApp))
+        browseBtn.translatesAutoresizingMaskIntoConstraints = false
+        browseBtn.bezelStyle = .inline
+        browseBtn.isHidden = (action.kind != .app)
+        targetRow.addArrangedSubview(browseBtn)
         formStack.addArrangedSubview(targetRow)
 
         // Confirm
-        let confirmRow = makeRow(label: "")
-        confirmCheckbox = NSButton(checkboxWithTitle: "Require confirmation (terminal only)", target: nil, action: nil)
+        confirmRow = makeRow(label: "")
+        confirmCheckbox = NSButton(checkboxWithTitle: l("qa.require_confirm"), target: nil, action: nil)
         confirmCheckbox.translatesAutoresizingMaskIntoConstraints = false
         confirmCheckbox.state = action.requiresConfirmation ? .on : .off
+        confirmRow.isHidden = (action.kind != .terminal)
         confirmRow.addArrangedSubview(confirmCheckbox)
         formStack.addArrangedSubview(confirmRow)
 
@@ -366,8 +427,8 @@ final class QuickActionEditForm: NSViewController, NSTextFieldDelegate {
         btnRow.alignment = .centerY
         btnRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let cancelBtn = NSButton(title: "Cancel", target: self, action: #selector(cancel))
-        let saveBtn = NSButton(title: isNew ? "Add" : "Save", target: self, action: #selector(save))
+        let cancelBtn = NSButton(title: l("cancel"), target: self, action: #selector(cancel))
+        let saveBtn = NSButton(title: isNew ? l("qa.add") : l("qa.save_btn"), target: self, action: #selector(save))
         saveBtn.bezelStyle = .rounded
         saveBtn.keyEquivalent = "\r"
 
@@ -383,10 +444,26 @@ final class QuickActionEditForm: NSViewController, NSTextFieldDelegate {
 
             nameField.widthAnchor.constraint(equalToConstant: 260),
             iconField.widthAnchor.constraint(equalToConstant: 260),
-            targetField.widthAnchor.constraint(equalToConstant: 260),
+            targetField.widthAnchor.constraint(equalToConstant: 180),
 
             btnRow.widthAnchor.constraint(equalTo: formStack.widthAnchor)
         ])
+    }
+
+    private func updateTargetPlaceholder() {
+        guard let idx = kindPopup?.indexOfSelectedItem,
+              idx < QuickActionKind.allCases.count else { return }
+        let kind = QuickActionKind.allCases[idx]
+        switch kind {
+        case .app:
+            targetField.placeholderString = "/Applications/App.app or drag & drop"
+        case .shortcut:
+            targetField.placeholderString = "Shortcut name, e.g. My Shortcut"
+        case .terminal:
+            targetField.placeholderString = "Shell command, e.g. ls -la"
+        case .url:
+            targetField.placeholderString = "https://example.com"
+        }
     }
 
     private func makeRow(label: String) -> NSStackView {
@@ -412,7 +489,45 @@ final class QuickActionEditForm: NSViewController, NSTextFieldDelegate {
         tf.translatesAutoresizingMaskIntoConstraints = false
         tf.placeholderString = placeholder
         tf.font = .systemFont(ofSize: 13)
+        tf.isEditable = true
+        tf.isSelectable = true
         return tf
+    }
+
+    @objc private func kindChanged() {
+        guard let idx = kindPopup?.indexOfSelectedItem,
+              idx < QuickActionKind.allCases.count else { return }
+        let kind = QuickActionKind.allCases[idx]
+        browseBtn?.isHidden = (kind != .app)
+        confirmRow?.isHidden = (kind != .terminal)
+        updateTargetPlaceholder()
+
+        let currentIcon = iconField?.stringValue.trimmingCharacters(in: .whitespaces) ?? ""
+        if currentIcon.isEmpty || currentIcon == "bolt.fill" {
+            iconField?.stringValue = defaultIcon(for: kind)
+        }
+    }
+
+    private func defaultIcon(for kind: QuickActionKind) -> String {
+        switch kind {
+        case .app:       return "app.fill"
+        case .terminal:  return "t.circle.fill"
+        case .shortcut:  return "command"
+        case .url:       return "globe"
+        }
+    }
+
+    @objc private func browseApp() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Application"
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.beginSheetModal(for: view.window!) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.targetField.stringValue = url.path
+        }
     }
 
     @objc private func cancel() {
@@ -425,19 +540,19 @@ final class QuickActionEditForm: NSViewController, NSTextFieldDelegate {
         let target = targetField.stringValue.trimmingCharacters(in: .whitespaces)
 
         guard !name.isEmpty else {
-            showError("Name is required.")
+            showError(l("qa.name_required"))
             return
         }
         guard !icon.isEmpty else {
-            showError("Icon is required.")
+            showError(l("qa.icon_required"))
             return
         }
         guard NSImage(systemSymbolName: icon, accessibilityDescription: name) != nil else {
-            showError("Invalid SF Symbol name: \(icon)")
+            showError(l("qa.invalid_icon", icon))
             return
         }
         guard !target.isEmpty else {
-            showError("Target is required.")
+            showError(l("qa.target_required"))
             return
         }
 
@@ -460,6 +575,49 @@ final class QuickActionEditForm: NSViewController, NSTextFieldDelegate {
     }
 }
 
+// MARK: - Drop Target Text Field
+
+final class DropTargetTextField: NSTextField {
+    var onAppDropped: ((String) -> Void)?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setupDrop()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func setupDrop() {
+        registerForDraggedTypes([.fileURL])
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard hasAppURL(sender) else { return [] }
+        return .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let url = appURL(from: sender) else { return false }
+        onAppDropped?(url.path)
+        return true
+    }
+
+    private func hasAppURL(_ sender: NSDraggingInfo) -> Bool {
+        return appURL(from: sender) != nil
+    }
+
+    private func appURL(from sender: NSDraggingInfo) -> URL? {
+        let pb = sender.draggingPasteboard
+        guard let urls = pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+              let url = urls.first else { return nil }
+        return url.pathExtension == "app" ? url : nil
+    }
+}
+
 extension Notification.Name {
     static let refreshQuickActions = Notification.Name("refreshQuickActions")
+}
+
+extension NSPasteboard.PasteboardType {
+    static let quickActionRow = NSPasteboard.PasteboardType("codexpet.quickaction.row")
 }

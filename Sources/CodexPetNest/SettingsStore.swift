@@ -15,6 +15,7 @@ struct Settings: Codable, Equatable {
     var pomodoro: PomodoroSettings = PomodoroSettings()
     var managedPetIds: [String] = []
     var activeNestId: String = "capacity-orbit-nest"
+    var hoverOnlyNestIds: Set<String> = []
 }
 
 final class SettingsStore {

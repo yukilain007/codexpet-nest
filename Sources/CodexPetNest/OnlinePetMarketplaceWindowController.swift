@@ -26,7 +26,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     private let paginationBar = NSStackView()
     private let prevButton = NSButton()
     private let nextButton = NSButton()
-    private let pageLabel = NSTextField(labelWithString: "Page 1")
+    private let pageLabel = NSTextField(labelWithString: l("market.page", 1))
     
     
     private let detailContainer = NSView()
@@ -64,7 +64,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
             backing: .buffered,
             defer: false
         )
-        window.title = "Pet Marketplace"
+        window.title = l("market.title")
         window.center()
         self.init(window: window)
         setupUI()
@@ -74,7 +74,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         guard let contentView = window?.contentView else { return }
         
         // Search Bar
-        searchField.placeholderString = "Search online pets..."
+        searchField.placeholderString = l("market.search_placeholder")
         searchField.target = self
         searchField.action = #selector(searchChanged)
         searchField.translatesAutoresizingMaskIntoConstraints = false
@@ -86,7 +86,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(loadingIndicator)
 
-        websiteButton.title = "Open codexpet.xyz"
+        websiteButton.title = l("menu.open_website")
         websiteButton.bezelStyle = .inline
         websiteButton.target = self
         websiteButton.action = #selector(openWebsite)
@@ -114,7 +114,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         paginationBar.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(paginationBar)
         
-        prevButton.title = "Prev"
+        prevButton.title = l("market.prev")
         prevButton.bezelStyle = .rounded
         prevButton.target = self
         prevButton.action = #selector(prevPage)
@@ -123,7 +123,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         pageLabel.font = .systemFont(ofSize: 12)
         paginationBar.addArrangedSubview(pageLabel)
         
-        nextButton.title = "Next"
+        nextButton.title = l("market.next")
         nextButton.bezelStyle = .rounded
         nextButton.target = self
         nextButton.action = #selector(nextPage)
@@ -170,21 +170,21 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         detailContainer.addSubview(statusLabel)
         
-        installButton.title = "Install"
+        installButton.title = l("market.install")
         installButton.bezelStyle = .rounded
         installButton.target = self
         installButton.action = #selector(installClicked)
         installButton.translatesAutoresizingMaskIntoConstraints = false
         detailContainer.addSubview(installButton)
         
-        settingsButton.title = "Open Codex Settings"
+        settingsButton.title = l("manage.open_codex_settings")
         settingsButton.bezelStyle = .rounded
         settingsButton.target = self
         settingsButton.action = #selector(openCodexSettings)
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
         detailContainer.addSubview(settingsButton)
 
-        viewOnWebsiteButton.title = "View on codexpet.xyz"
+        viewOnWebsiteButton.title = l("market.view_on_website")
         viewOnWebsiteButton.bezelStyle = .rounded
         viewOnWebsiteButton.target = self
         viewOnWebsiteButton.action = #selector(openSelectedPetWebsite)
@@ -291,7 +291,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
                 await MainActor.run {
                     self.isLoading = false
                     self.loadingIndicator.stopAnimation(nil)
-                    self.showErrorAlert(message: "Failed to load pets: \(error.localizedDescription)")
+                    self.showErrorAlert(message: l("market.failed_load", error.localizedDescription))
                 }
             }
         }
@@ -299,7 +299,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     
     private func updatePaginationUI() {
         let totalPages = max(1, Int(ceil(Double(totalItems) / Double(pageSize))))
-        pageLabel.stringValue = "\(currentPage) / \(totalPages)"
+        pageLabel.stringValue = l("market.page", currentPage) + " / \(totalPages)"
         prevButton.isEnabled = currentPage > 1
         nextButton.isEnabled = currentPage < totalPages
     }
@@ -320,10 +320,10 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
     @MainActor
     private func showErrorAlert(message: String) {
         let alert = NSAlert()
-        alert.messageText = "Network Error"
+        alert.messageText = l("market.network_error")
         alert.informativeText = message
-        alert.addButton(withTitle: "Retry")
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: l("market.retry"))
+        alert.addButton(withTitle: l("ok"))
         if alert.runModal() == .alertFirstButtonReturn {
             loadData(search: searchField.stringValue)
         }
@@ -352,10 +352,10 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
                     self.updateDetailUI()
                     
                     let alert = NSAlert()
-                    alert.messageText = "Pet Installed"
-                    alert.informativeText = "Pet '\(pet.name)' installed successfully. Codex opened Settings. Please choose Appearance / Personalization / Pets and choose this pet."
-                    alert.addButton(withTitle: "Open Codex Settings")
-                    alert.addButton(withTitle: "OK")
+                    alert.messageText = l("market.install_success_title")
+                    alert.informativeText = l("market.install_success_message", pet.name)
+                    alert.addButton(withTitle: l("manage.open_codex_settings"))
+                    alert.addButton(withTitle: l("ok"))
                     if alert.runModal() == .alertFirstButtonReturn {
                         self.openCodexSettings()
                     }
@@ -364,10 +364,10 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
                 await MainActor.run {
                     self.isInstalling = false
                     self.installButton.isEnabled = true
-                    self.installButton.title = "Install"
+                    self.installButton.title = l("market.install")
                     
                     let alert = NSAlert()
-                    alert.messageText = "Installation Failed"
+                    alert.messageText = l("market.install_failed_title")
                     alert.informativeText = error.localizedDescription
                     alert.runModal()
                 }
@@ -428,7 +428,7 @@ final class OnlinePetMarketplaceWindowController: NSWindowController, NSTableVie
         tagsLabel.stringValue = pet.tags.map { "#\($0)" }.joined(separator: " ")
         
         let isInstalled = PackageManager.shared.isPetInstalled(id: pet.id)
-        installButton.title = isInstalled ? "Reinstall" : "Install"
+        installButton.title = isInstalled ? l("market.reinstall") : l("market.install")
         installButton.isEnabled = !isInstalling
         viewOnWebsiteButton.isEnabled = true
         

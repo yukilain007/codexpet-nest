@@ -86,11 +86,11 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
     private func buildMenu() -> NSMenu {
         let menu = NSMenu(title: "CodexPet Nest")
         
-        let showHideTitle = SettingsStore.shared.settings.showNest ? "Hide Nest" : "Show Nest"
+        let showHideTitle = SettingsStore.shared.settings.showNest ? l("menu.hide_nest") : l("menu.show_nest")
         menu.addItem(NSMenuItem(title: showHideTitle, action: #selector(MenuActionTarget.toggleShowNest), keyEquivalent: ""))
         
-        menu.addItem(NSMenuItem(title: "Manage Nests", action: #selector(MenuActionTarget.manageLocalNests), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Manage Pets", action: #selector(MenuActionTarget.manageLocalPets), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: l("context.manage_nests"), action: #selector(MenuActionTarget.manageLocalNests), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: l("context.manage_pets"), action: #selector(MenuActionTarget.manageLocalPets), keyEquivalent: ""))
         
 
         
@@ -121,6 +121,25 @@ final class NestOverlayWindow: NSPanel, NSWindowDelegate {
             lastVisible = false
 
         case .open(let petBounds):
+            let activeId = SettingsStore.shared.settings.activeNestId
+            if SettingsStore.shared.settings.hoverOnlyNestIds.contains(activeId) {
+                guard let screen = screenForTopLeftRect(NSRect(x: petBounds.x, y: petBounds.y, width: petBounds.width, height: petBounds.height)) else {
+                    if lastVisible { orderOut(nil) }
+                    lastVisible = false
+                    return
+                }
+                let mouseLoc = NSEvent.mouseLocation
+                let petAkY = screen.frame.height - petBounds.y - petBounds.height
+                let margin: CGFloat = 60
+                let petHitRect = NSRect(x: petBounds.x - margin, y: petAkY - margin, width: petBounds.width + margin * 2, height: petBounds.height + margin * 2)
+                let overPet = petHitRect.contains(mouseLoc)
+                let overNest = isVisible ? self.frame.contains(mouseLoc) : false
+                if !overPet && !overNest {
+                    if lastVisible { orderOut(nil) }
+                    lastVisible = false
+                    return
+                }
+            }
             showFollowing(petBounds: petBounds)
         }
     }

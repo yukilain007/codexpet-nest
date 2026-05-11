@@ -319,7 +319,6 @@ final class NestRenderer: NSView {
     
     private func updateAppearance() {
         if isOrbitNest {
-            // Strictly transparent background for orbit
             layer?.backgroundColor = NSColor.clear.cgColor
             layer?.cornerRadius = 0
         } else if activeNest != nil {

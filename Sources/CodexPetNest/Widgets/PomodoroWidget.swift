@@ -10,8 +10,8 @@ enum PomodoroPhase {
 final class PomodoroWidget: NSView {
     private let timeLabel = NSTextField(labelWithString: "")
     private let phaseLabel = NSTextField(labelWithString: "")
-    private let startPauseButton = NSButton(title: "Start", target: nil, action: nil)
-    private let resetButton = NSButton(title: "Reset", target: nil, action: nil)
+    private let startPauseButton = NSButton(title: l("widget.pomodoro.start"), target: nil, action: nil)
+    private let resetButton = NSButton(title: l("widget.pomodoro.reset"), target: nil, action: nil)
     private var timer: Timer?
     private var phase: PomodoroPhase = .idle
     private var lastPhase: PomodoroPhase = .idle
@@ -32,7 +32,7 @@ final class PomodoroWidget: NSView {
         phaseLabel.alignment = .center
         phaseLabel.textColor = .white.withAlphaComponent(0.6)
         phaseLabel.drawsBackground = false
-        phaseLabel.stringValue = "Ready"
+        phaseLabel.stringValue = l("widget.pomodoro.ready")
         addSubview(phaseLabel)
 
         startPauseButton.wantsLayer = true
@@ -142,17 +142,17 @@ final class PomodoroWidget: NSView {
         let s = secondsRemaining % 60
         timeLabel.stringValue = String(format: "%02d:%02d", m, s)
         switch phase {
-        case .idle:   phaseLabel.stringValue = "Ready"
-        case .focus:  phaseLabel.stringValue = "Focus"
-        case .rest:   phaseLabel.stringValue = "Break"
-        case .paused: phaseLabel.stringValue = "Paused"
+        case .idle:   phaseLabel.stringValue = l("widget.pomodoro.ready")
+        case .focus:  phaseLabel.stringValue = l("widget.pomodoro.focus")
+        case .rest:   phaseLabel.stringValue = l("widget.pomodoro.break")
+        case .paused: phaseLabel.stringValue = l("widget.pomodoro.paused")
         }
         switch phase {
         case .idle, .paused:
-            startPauseButton.title = "▶ Start"
+            startPauseButton.title = l("widget.pomodoro.start_btn")
             startPauseButton.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
         case .focus, .rest:
-            startPauseButton.title = "Ⅱ Pause"
+            startPauseButton.title = l("widget.pomodoro.pause_btn")
             startPauseButton.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.08).cgColor
         }
         startPauseButton.layer?.borderWidth = 0

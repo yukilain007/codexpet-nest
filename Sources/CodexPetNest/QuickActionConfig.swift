@@ -4,6 +4,7 @@ enum QuickActionKind: String, Codable, CaseIterable {
     case app
     case shortcut
     case terminal
+    case url
 }
 
 struct QuickActionConfig: Codable, Identifiable {

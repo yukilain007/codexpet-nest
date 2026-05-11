@@ -12,7 +12,7 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered, defer: false
         )
-        window.title = "Manage Nests"
+        window.title = l("context.manage_nests")
         window.center()
         super.init(window: window)
         setupUI()
@@ -58,8 +58,8 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         bottomBar.spacing = 10
         bottomBar.alignment = .centerY
         
-        let installBtn = NSButton(title: "Install Local Nest ZIP...", target: self, action: #selector(installLocalNest))
-        let refreshBtn = NSButton(title: "Refresh", target: self, action: #selector(refreshData))
+        let installBtn = NSButton(title: l("manage.install_local_nest"), target: self, action: #selector(installLocalNest))
+        let refreshBtn = NSButton(title: l("manage.refresh"), target: self, action: #selector(refreshData))
         
         bottomBar.addArrangedSubview(installBtn)
         bottomBar.addArrangedSubview(refreshBtn)
@@ -124,14 +124,14 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         authorLabel.maximumNumberOfLines = 2
         infoStack.addArrangedSubview(authorLabel)
 
-        let activeLabel = NSTextField(labelWithString: "Active")
+        let activeLabel = NSTextField(labelWithString: l("manage.active"))
         activeLabel.font = NSFont.boldSystemFont(ofSize: 11)
         activeLabel.textColor = .systemGreen
         activeLabel.isHidden = true
         activeLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(activeLabel)
         
-        let useBtn = NSButton(title: "Use", target: self, action: #selector(useNest(_:)))
+        let useBtn = NSButton(title: l("manage.use"), target: self, action: #selector(useNest(_:)))
         useBtn.bezelStyle = .rounded
         useBtn.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(useBtn)
@@ -168,8 +168,8 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         let currentNestId = SettingsStore.shared.settings.activeNestId
         
         if row == 0 {
-            titleLabel.stringValue = "Capacity Orbit"
-            authorLabel.stringValue = "Built-in • Shows live usage rings around your pet"
+            titleLabel.stringValue = l("manage.orbit_title")
+            authorLabel.stringValue = l("manage.orbit_desc")
             iconView.image = NSImage(named: NSImage.networkName)
             useBtn.tag = -2
             menuBtn.tag = -2
@@ -224,20 +224,54 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
     @objc private func showMenu(_ sender: NSButton) {
         guard sender.tag >= 0 else { return }
         let nest = nests[sender.tag]
-        
+
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open in Finder", action: #selector(openInFinder(_:)), keyEquivalent: "").target = self
-        
-        let uninstallItem = NSMenuItem(title: "Uninstall", action: #selector(uninstallNest(_:)), keyEquivalent: "")
+
+        if QuickActionConfigStore.shared.hasComponent(nestId: nest.id) {
+            let qaItem = NSMenuItem(title: l("menu.configure_quick_actions"), action: #selector(configureQuickActions(_:)), keyEquivalent: "")
+            qaItem.target = self
+            qaItem.representedObject = nest
+            menu.addItem(qaItem)
+            menu.addItem(.separator())
+        }
+
+        let hoverItem = NSMenuItem(title: l("manage.hover_only"), action: #selector(toggleHoverOnly(_:)), keyEquivalent: "")
+        hoverItem.target = self
+        hoverItem.representedObject = nest
+        hoverItem.state = SettingsStore.shared.settings.hoverOnlyNestIds.contains(nest.id) ? .on : .off
+        menu.addItem(hoverItem)
+        menu.addItem(.separator())
+
+        menu.addItem(withTitle: l("manage.open_in_finder"), action: #selector(openInFinder(_:)), keyEquivalent: "").target = self
+
+        let uninstallItem = NSMenuItem(title: l("manage.uninstall"), action: #selector(uninstallNest(_:)), keyEquivalent: "")
         uninstallItem.target = self
         uninstallItem.isEnabled = !nest.isBuiltIn
         menu.addItem(uninstallItem)
-        
+
         menu.item(at: 0)?.representedObject = nest
         uninstallItem.representedObject = nest
-        
+
         let point = NSPoint(x: 0, y: sender.bounds.height)
         menu.popUp(positioning: nil, at: point, in: sender)
+    }
+
+    @objc private func configureQuickActions(_ sender: NSMenuItem) {
+        guard let nest = sender.representedObject as? InstalledNest else { return }
+        QuickActionsConfigWindowController.shared.show(for: nest.id)
+    }
+
+    @objc private func toggleHoverOnly(_ sender: NSMenuItem) {
+        guard let nest = sender.representedObject as? InstalledNest else { return }
+        var hoverSet = SettingsStore.shared.settings.hoverOnlyNestIds
+        if hoverSet.contains(nest.id) {
+            hoverSet.remove(nest.id)
+        } else {
+            hoverSet.insert(nest.id)
+        }
+        SettingsStore.shared.settings.hoverOnlyNestIds = hoverSet
+        SettingsStore.shared.save()
+        tableView.reloadData()
     }
     
     @objc private func openInFinder(_ sender: NSMenuItem) {
@@ -249,10 +283,10 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
         guard let nest = sender.representedObject as? InstalledNest else { return }
         
         let alert = NSAlert()
-        alert.messageText = "Uninstall Nest Skin?"
-        alert.informativeText = "Are you sure you want to remove '\(nest.name)'? This cannot be undone."
-        alert.addButton(withTitle: "Uninstall")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = l("manage.uninstall_confirm_title")
+        alert.informativeText = l("manage.uninstall_confirm_message", nest.name)
+        alert.addButton(withTitle: l("manage.uninstall"))
+        alert.addButton(withTitle: l("manage.later")) // Using later as cancel for simplicity, or add cancel
         
         if alert.runModal() == .alertFirstButtonReturn {
             do {
@@ -277,10 +311,10 @@ final class LocalNestManagerWindowController: NSWindowController, NSTableViewDat
                     try await PackageManager.shared.installLocalNest(zipURL: url)
                     await MainActor.run {
                         let alert = NSAlert()
-                        alert.messageText = "Nest Installed"
-                        alert.informativeText = "The nest skin has been installed successfully. Would you like to use it now?"
-                        alert.addButton(withTitle: "Apply Now")
-                        alert.addButton(withTitle: "Later")
+                        alert.messageText = l("manage.install_success_title")
+                        alert.informativeText = l("manage.install_success_message")
+                        alert.addButton(withTitle: l("manage.apply_now"))
+                        alert.addButton(withTitle: l("manage.later"))
                         if alert.runModal() == .alertFirstButtonReturn {
                             // Find the newly installed nest
                             LocalNestManager.shared.refresh()

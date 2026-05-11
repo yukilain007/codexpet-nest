@@ -43,6 +43,7 @@ app: release
 	@cp -R docs/test-fixtures/nests-v1.1/basket-pomodoro-nest "$(APP_BUNDLE)/Contents/Resources/BundledNests/"
 	@cp -R docs/test-fixtures/nests-v1.1/legend-status-nest "$(APP_BUNDLE)/Contents/Resources/BundledNests/"
 	@cp -R docs/test-fixtures/nests-v1.1/window-desk-nest "$(APP_BUNDLE)/Contents/Resources/BundledNests/"
+	@cp -R docs/test-fixtures/nests-v1.1/quick-actions-demo-nest "$(APP_BUNDLE)/Contents/Resources/BundledNests/"
 	@chmod +x "$(APP_BUNDLE)/Contents/MacOS/CodexPetNest"
 	@echo "App bundle created: $(APP_BUNDLE)"
 
@@ -55,6 +56,7 @@ dev: all
 	@cp -R docs/test-fixtures/nests-v1.1/basket-pomodoro-nest .build/BundledNests/
 	@cp -R docs/test-fixtures/nests-v1.1/legend-status-nest .build/BundledNests/
 	@cp -R docs/test-fixtures/nests-v1.1/window-desk-nest .build/BundledNests/
+	@cp -R docs/test-fixtures/nests-v1.1/quick-actions-demo-nest .build/BundledNests/
 	@echo "Starting app with console logging..."
 	./$(EXEC)
 

@@ -33,7 +33,8 @@ final class LocalNestManager {
         "capacity-orbit-nest",
         "basket-pomodoro-nest",
         "legend-status-nest",
-        "window-desk-nest"
+        "window-desk-nest",
+        "quick-actions-demo-nest"
     ]
 
     static func isBuiltIn(id: String) -> Bool {
@@ -176,6 +177,7 @@ final class LocalNestManager {
         let isBuiltIn = (id == "default" || id == NestRenderer.orbitNestId)
         if isBuiltIn || installedNests.contains(where: { $0.id == id }) {
             SettingsStore.shared.settings.activeNestId = id
+            SettingsStore.shared.settings.showNest = true
             SettingsStore.shared.save()
 
             NotificationCenter.default.post(name: .activeNestChanged, object: nil)

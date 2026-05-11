@@ -26,20 +26,17 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.delegate = self
 
         let showHideTitle = SettingsStore.shared.settings.showNest
-            ? "Hide Nest"
-            : "Show Nest"
+            ? l("menu.hide_nest")
+            : l("menu.show_nest")
         menu.addItem(NSMenuItem(title: showHideTitle,
                                  action: #selector(MenuActionTarget.toggleShowNest),
                                  keyEquivalent: ""))
-        menu.addItem(withTitle: "Manage Pets...", action: #selector(MenuActionTarget.manageLocalPets), keyEquivalent: "m")
-        menu.addItem(withTitle: "Manage Nests...", action: #selector(MenuActionTarget.manageLocalNests), keyEquivalent: "")
+        menu.addItem(withTitle: l("menu.manage_pets"), action: #selector(MenuActionTarget.manageLocalPets), keyEquivalent: "m")
+        menu.addItem(withTitle: l("menu.manage_nests"), action: #selector(MenuActionTarget.manageLocalNests), keyEquivalent: "")
 
-        if QuickActionConfigStore.shared.activeNestHasComponent() {
-            menu.addItem(withTitle: "Configure Quick Actions...", action: #selector(MenuActionTarget.configureQuickActions), keyEquivalent: "")
-        }
         menu.addItem(.separator())
 
-        menu.addItem(NSMenuItem(title: "Open Pets Marketplace...",
+        menu.addItem(NSMenuItem(title: l("menu.open_marketplace"),
                                  action: #selector(MenuActionTarget.browsePets),
                                  keyEquivalent: ","))
         
@@ -51,17 +48,17 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
         
-        menu.addItem(NSMenuItem(title: "Open codexpet.xyz",
+        menu.addItem(NSMenuItem(title: l("menu.open_website"),
                                  action: #selector(MenuActionTarget.openWebsite),
                                  keyEquivalent: ""))
         menu.addItem(.separator())
 
-        menu.addItem(NSMenuItem(title: "Check for Updates...",
+        menu.addItem(NSMenuItem(title: l("menu.check_updates"),
                                  action: #selector(MenuActionTarget.checkForUpdates),
                                  keyEquivalent: ""))
         menu.addItem(.separator())
 
-        let quitItem = NSMenuItem(title: "Quit CodexPet Nest",
+        let quitItem = NSMenuItem(title: l("menu.quit"),
                                  action: #selector(NSApplication.terminate(_:)),
                                  keyEquivalent: "q")
         quitItem.target = NSApp
@@ -100,15 +97,15 @@ extension MenuActionTarget {
             do {
                 let version = try await CodexPetAPI.shared.getVersion()
                 guard version.latestVersion != current else {
-                    await showAlert(title: "Up to Date", message: "CodexPet Nest \(current) is the latest version.")
+                    await showAlert(title: l("alert.up_to_date.title"), message: l("alert.up_to_date.message", current))
                     return
                 }
                 await showAlert(
-                    title: "Update Available",
-                    message: "Version \(version.latestVersion) is available.\n\nDownload from:\n\(version.downloadUrl ?? "https://codexpet.xyz")"
+                    title: l("alert.update_available.title"),
+                    message: l("alert.update_available.message", version.latestVersion, version.downloadUrl ?? "https://codexpet.xyz")
                 )
             } catch {
-                await showAlert(title: "Update Check Failed", message: error.localizedDescription)
+                await showAlert(title: l("alert.update_failed.title"), message: error.localizedDescription)
             }
         }
     }
