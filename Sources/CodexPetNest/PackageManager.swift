@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import AppKit
 
 // MARK: - Package Types
 
@@ -119,16 +120,57 @@ final class PackageManager {
         try await downloadAndInstall(downloadURL: meta.url, expectedSHA256: meta.sha256, type: .nest)
     }
 
+    /// Download and validate a pet from the platform API without installing it yet.
+    func preparePetInstall(id: String) async throws -> PreparedPackageInstall {
+        let meta = try await api.getPetDownload(id: id)
+        let data = try await downloadAndValidate(downloadURL: meta.url, expectedSHA256: meta.sha256)
+        let manifest = try await inspectPackage(data: data, type: .pet)
+        guard manifest.id == id else {
+            throw PackageManagerError.invalidManifest("Downloaded pet id (\(manifest.id)) does not match requested pet id (\(id))")
+        }
+        return PreparedPackageInstall(data: data, manifest: manifest)
+    }
+
+    func installPreparedPet(_ prepared: PreparedPackageInstall) async throws {
+        try await processInstall(data: prepared.data, expectedSHA256: nil, type: .pet)
+    }
+
     // MARK: - Core Flow
 
     private func downloadAndInstall(downloadURL: String, expectedSHA256: String?, type: PackageType) async throws {
+        let data = try await downloadAndValidate(downloadURL: downloadURL, expectedSHA256: expectedSHA256)
+        try await processInstall(data: data, expectedSHA256: nil, type: type)
+    }
+
+    private func downloadAndValidate(downloadURL: String, expectedSHA256: String?) async throws -> Data {
         let (data, _) = try await api.downloadFile(url: downloadURL)
-        
+
         guard let expected = expectedSHA256 else {
             throw PackageManagerError.invalidManifest("Missing SHA256 for online integrity check")
         }
 
-        try await processInstall(data: data, expectedSHA256: expected, type: type)
+        let actual = sha256Hex(data)
+        guard actual == expected else {
+            throw PackageManagerError.sha256Mismatch(expected: expected, actual: actual)
+        }
+
+        return data
+    }
+
+    private func inspectPackage(data: Data, type: PackageType) async throws -> PackageManifest {
+        let workDir = tempDir.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workDir) }
+
+        let zipPath = workDir.appendingPathComponent("package.zip")
+        try data.write(to: zipPath, options: .atomic)
+
+        try await safeUnzip(zipPath, to: workDir, type: type)
+        try? FileManager.default.removeItem(at: zipPath)
+
+        let (manifest, packageRoot) = try resolvePackageRoot(in: workDir, type: type)
+        try validateManifest(manifest, type: type, packageRoot: packageRoot)
+        return manifest
     }
 
     private func processInstall(data: Data, expectedSHA256: String?, type: PackageType) async throws {
@@ -631,4 +673,42 @@ final class PackageManager {
         let hash = SHA256.hash(data: data)
         return hash.compactMap { String(format: "%02x", $0) }.joined()
     }
+
+    // MARK: - UI Helpers
+
+    @MainActor
+    static func showOverwritePrompt(name: String, id: String) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Pet Already Installed"
+        alert.informativeText = "A pet named \"\(name)\" is already installed. Overwrite it?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Overwrite")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    @MainActor
+    static func showInstallError(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "Install Failed"
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    @MainActor
+    static func showInstallSuccess(name: String) {
+        let alert = NSAlert()
+        alert.messageText = "Pet Installed"
+        alert.informativeText = "\(name) is ready in your nest."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+}
+
+struct PreparedPackageInstall {
+    let data: Data
+    let manifest: PackageManifest
 }

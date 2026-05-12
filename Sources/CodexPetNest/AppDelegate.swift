@@ -69,9 +69,111 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleInstallURL(_ url: URL) {
         guard url.scheme == "codexpetnest" else { return }
-        Task {
-            await NestInstallService.shared.handleInstallURL(url)
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+
+        let action = components.queryItems?.first(where: { $0.name == "action" })?.value
+
+        guard let action else {
+            // No ?action= — backward compat: delegate to token-based nest install flow
+            Task {
+                await NestInstallService.shared.handleInstallURL(url)
+            }
+            return
         }
+
+        switch action {
+        case "open":
+            Task { await handleOpenAction() }
+        case "install-pet":
+            Task { await handleInstallPetAction(components) }
+        case "open-nest":
+            Task { await handleOpenNestAction(components) }
+        default:
+            Task { @MainActor in showUnknownActionAlert(action) }
+        }
+    }
+
+    // MARK: - Action Handlers
+
+    private func handleOpenAction() async {
+        await MainActor.run {
+            NSApp.activate(ignoringOtherApps: true)
+            if let window = NSApp.windows.first(where: { $0 is NestOverlayWindow }) {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+
+    private func handleInstallPetAction(_ components: URLComponents) async {
+        let params = components.queryItems ?? []
+
+        guard let slug = params.first(where: { $0.name == "slug" })?.value, !slug.isEmpty else {
+            await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = "Invalid Link"
+                alert.informativeText = "The install link is missing the pet id."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+            return
+        }
+
+        do {
+            let prepared = try await PackageManager.shared.preparePetInstall(id: slug)
+            let name = params.first(where: { $0.name == "name" })?.value
+                ?? prepared.manifest.name
+
+            if PackageManager.shared.isPetInstalled(id: prepared.manifest.id) {
+                let overwrite = await MainActor.run {
+                    PackageManager.showOverwritePrompt(name: prepared.manifest.name, id: prepared.manifest.id)
+                }
+                guard overwrite else { return }
+            }
+
+            try await PackageManager.shared.installPreparedPet(prepared)
+            await MainActor.run {
+                PackageManager.showInstallSuccess(name: name)
+            }
+        } catch {
+            await MainActor.run {
+                PackageManager.showInstallError(error)
+            }
+        }
+    }
+
+    private func handleOpenNestAction(_ components: URLComponents) async {
+        let params = components.queryItems ?? []
+
+        guard let id = params.first(where: { $0.name == "id" })?.value, !id.isEmpty else {
+            await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = "Invalid Link"
+                alert.informativeText = "The nest link is missing the id parameter."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+            return
+        }
+
+        await MainActor.run {
+            NSApp.activate(ignoringOtherApps: true)
+            LocalNestManager.shared.applyNest(id: id)
+            if let window = NSApp.windows.first(where: { $0 is NestOverlayWindow }) {
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+
+    @MainActor
+    private func showUnknownActionAlert(_ action: String) {
+        let alert = NSAlert()
+        alert.messageText = "Unknown Action"
+        alert.informativeText = "The link action \"\(action)\" is not recognized."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     private func checkVersionOnLaunch() async {
