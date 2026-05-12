@@ -3,10 +3,11 @@
   "schemaVersion": "1.1.0",
   "id": "quick-actions-demo-nest",
   "name": "快捷方式Demo",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "author": "CodexPet",
   "description": "Quick Actions Demo Nest with URL, App, Terminal and Shortcut actions.",
   "layout": "nest.json",
+  "preview": "preview.png",
   "license": "MIT",
   "tags": ["official", "v1.1", "quick-actions", "demo"]
 }
