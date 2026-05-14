@@ -54,7 +54,7 @@ $(EXEC_RELEASE): $(SOURCES) $(GEN_VERSION_FILE)
 		-framework Sparkle \
 		-Xlinker -rpath -Xlinker @executable_path/../Frameworks \
 		-o $@ \
-		$(SOURCES)
+		$(SOURCES) $(GEN_VERSION_FILE)
 
 release: $(EXEC_RELEASE)
 
