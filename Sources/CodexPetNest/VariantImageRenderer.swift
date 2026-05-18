@@ -62,10 +62,10 @@ final class VariantImageRenderer: NSView, NestElementRenderer {
             imageView.image = cached
             return true
         }
-        
+
         let url = rootURL.appendingPathComponent(path)
-        if url.pathExtension.lowercased() == "gif" {
-            return AnimatedImageSupport.load(contentsOf: url, into: imageView)
+        if AnimatedImageSupport.loadAnimationIfPresent(contentsOf: url, into: imageView) {
+            return true
         }
 
         if let image = NSImage(contentsOf: url) {
@@ -73,7 +73,7 @@ final class VariantImageRenderer: NSView, NestElementRenderer {
             imageView.image = image
             return true
         }
-        
+
         return false
     }
 }

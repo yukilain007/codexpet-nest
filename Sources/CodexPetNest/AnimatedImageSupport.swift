@@ -2,6 +2,19 @@ import AppKit
 import ImageIO
 import ObjectiveC
 
+private enum AnimatedImageFormat {
+    case gif
+    case webp
+
+    init?(url: URL) {
+        switch url.pathExtension.lowercased() {
+        case "gif": self = .gif
+        case "webp": self = .webp
+        default: return nil
+        }
+    }
+}
+
 enum AnimatedImageSupport {
     static func configure(_ imageView: NSImageView) {
         imageView.animates = true
@@ -9,17 +22,7 @@ enum AnimatedImageSupport {
 
     @discardableResult
     static func load(contentsOf url: URL, into imageView: NSImageView) -> Bool {
-        stopAnimation(on: imageView)
-
-        if url.pathExtension.lowercased() == "gif",
-           let animation = GIFAnimation(url: url, imageView: imageView) {
-            objc_setAssociatedObject(
-                imageView,
-                &animationAssociationKey,
-                animation,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            animation.start()
+        if loadAnimationIfPresent(contentsOf: url, into: imageView) {
             return true
         }
 
@@ -31,8 +34,27 @@ enum AnimatedImageSupport {
         return true
     }
 
+    @discardableResult
+    static func loadAnimationIfPresent(contentsOf url: URL, into imageView: NSImageView) -> Bool {
+        stopAnimation(on: imageView)
+
+        guard let format = AnimatedImageFormat(url: url),
+              let animation = ImageIOAnimation(url: url, imageView: imageView, format: format) else {
+            return false
+        }
+
+        objc_setAssociatedObject(
+            imageView,
+            &animationAssociationKey,
+            animation,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        animation.start()
+        return true
+    }
+
     static func stopAnimation(on imageView: NSImageView) {
-        if let animation = objc_getAssociatedObject(imageView, &animationAssociationKey) as? GIFAnimation {
+        if let animation = objc_getAssociatedObject(imageView, &animationAssociationKey) as? ImageIOAnimation {
             animation.stop()
         }
         objc_setAssociatedObject(imageView, &animationAssociationKey, nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
@@ -41,14 +63,14 @@ enum AnimatedImageSupport {
 
 private var animationAssociationKey: UInt8 = 0
 
-private final class GIFAnimation {
+private final class ImageIOAnimation {
     private weak var imageView: NSImageView?
     private let frames: [NSImage]
     private let delays: [TimeInterval]
     private var index = 0
     private var timer: Timer?
 
-    init?(url: URL, imageView: NSImageView) {
+    init?(url: URL, imageView: NSImageView, format: AnimatedImageFormat) {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let frameCount = CGImageSourceGetCount(source)
         guard frameCount > 1 else { return nil }
@@ -60,7 +82,7 @@ private final class GIFAnimation {
             guard let cgImage = CGImageSourceCreateImageAtIndex(source, i, nil) else { continue }
             let size = NSSize(width: cgImage.width, height: cgImage.height)
             loadedFrames.append(NSImage(cgImage: cgImage, size: size))
-            loadedDelays.append(Self.frameDelay(source: source, index: i))
+            loadedDelays.append(Self.frameDelay(source: source, index: i, format: format))
         }
 
         guard !loadedFrames.isEmpty else { return nil }
@@ -95,17 +117,28 @@ private final class GIFAnimation {
         scheduleNextFrame()
     }
 
-    private static func frameDelay(source: CGImageSource, index: Int) -> TimeInterval {
+    private static func frameDelay(source: CGImageSource, index: Int, format: AnimatedImageFormat) -> TimeInterval {
         guard
-            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
-            let gif = properties[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
         else {
             return 0.1
         }
 
-        let unclamped = gif[kCGImagePropertyGIFUnclampedDelayTime] as? TimeInterval
-        let clamped = gif[kCGImagePropertyGIFDelayTime] as? TimeInterval
-        let delay = unclamped ?? clamped ?? 0.1
-        return delay < 0.02 ? 0.1 : delay
+        let delay: TimeInterval?
+
+        switch format {
+        case .gif:
+            let dict = properties[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+            delay = dict?[kCGImagePropertyGIFUnclampedDelayTime] as? TimeInterval
+                ?? dict?[kCGImagePropertyGIFDelayTime] as? TimeInterval
+
+        case .webp:
+            let dict = properties[kCGImagePropertyWebPDictionary] as? [CFString: Any]
+            delay = dict?[kCGImagePropertyWebPUnclampedDelayTime] as? TimeInterval
+                ?? dict?[kCGImagePropertyWebPDelayTime] as? TimeInterval
+        }
+
+        let resolved = delay ?? 0.1
+        return resolved < 0.02 ? 0.1 : resolved
     }
 }
