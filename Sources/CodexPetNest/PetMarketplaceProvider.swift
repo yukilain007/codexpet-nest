@@ -290,7 +290,7 @@ final class PetdexMarketplaceProvider: PetMarketplaceProvider {
             let petJSON = try JSONDecoder().decode(PetdexPetJSON.self, from: data)
             return petJSON.id
         } catch is CancellationError {
-            throw CancellationError()
+            return pet.slug
         } catch {
             return pet.slug
         }
