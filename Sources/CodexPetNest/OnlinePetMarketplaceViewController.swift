@@ -5,9 +5,11 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
     
     static let shared = OnlinePetMarketplaceViewController()
     
-    private var pets: [PetItem] = []
-    private var selectedPet: PetDetail?
+    private var pets: [MarketplacePetItem] = []
+    private var selectedPet: MarketplacePetDetail?
     private var isInstalling: Bool = false
+    private var installToken: UUID?
+    private var installedPetIdOverrides: [String: String] = [:]
     private var isLoading: Bool = false
     private var currentPage: Int = 1
     private var totalItems: Int = 0
@@ -17,9 +19,17 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
     private var detailTask: Task<Void, Never>?
     private var searchTimer: Timer?
 
+    private let providers: [PetMarketplaceSource: PetMarketplaceProvider] = [
+        .codexPet: CodexPetMarketplaceProvider(),
+        .petdex: PetdexMarketplaceProvider()
+    ]
+    private var currentSource: PetMarketplaceSource = .codexPet
+    private var provider: PetMarketplaceProvider { providers[currentSource]! }
+
     
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
+    private let sourceControl = NSSegmentedControl(labels: PetMarketplaceSource.allCases.map { $0.displayName }, trackingMode: .selectOne, target: nil, action: nil)
     private let searchField = NSSearchField()
     private let loadingIndicator = NSProgressIndicator()
     
@@ -67,6 +77,12 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
 
 
         
+        sourceControl.selectedSegment = 0
+        sourceControl.target = self
+        sourceControl.action = #selector(sourceChanged)
+        sourceControl.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(sourceControl)
+
         // Search Bar
         searchField.placeholderString = l("market.search_placeholder")
         searchField.target = self
@@ -80,7 +96,7 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
         loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(loadingIndicator)
 
-        websiteButton.title = l("menu.open_website")
+        websiteButton.title = l("market.open_source_website", currentSource.displayName)
         NestUI.styleSecondaryButton(websiteButton)
         websiteButton.target = self
         websiteButton.action = #selector(openWebsite)
@@ -189,8 +205,12 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
         detailContainer.addSubview(settingsButton)
         
         NSLayoutConstraint.activate([
-            searchField.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
-            searchField.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 18),
+            sourceControl.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16),
+            sourceControl.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 18),
+            sourceControl.widthAnchor.constraint(equalToConstant: 190),
+
+            searchField.centerYAnchor.constraint(equalTo: sourceControl.centerYAnchor),
+            searchField.leadingAnchor.constraint(equalTo: sourceControl.trailingAnchor, constant: 12),
             searchField.widthAnchor.constraint(equalToConstant: 300),
             
             loadingIndicator.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
@@ -199,7 +219,7 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
             websiteButton.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
             websiteButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -18),
             
-            scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 14),
+            scrollView.topAnchor.constraint(equalTo: sourceControl.bottomAnchor, constant: 14),
             scrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 18),
             scrollView.bottomAnchor.constraint(equalTo: paginationBar.topAnchor, constant: -8),
             scrollView.widthAnchor.constraint(equalToConstant: 310),
@@ -209,7 +229,7 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
             paginationBar.heightAnchor.constraint(equalToConstant: 32),
             
             
-            detailContainer.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 14),
+            detailContainer.topAnchor.constraint(equalTo: sourceControl.bottomAnchor, constant: 14),
             detailContainer.leadingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: 12),
             detailContainer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -18),
             detailContainer.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -18),
@@ -263,13 +283,17 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
         isLoading = true
         loadingIndicator.startAnimation(nil)
         self.currentPage = page
+        let activeProvider = provider
+        let activeSource = currentSource
+        let activePageSize = pageSize
         
         listTask = Task {
             do {
-                let response = try await CodexPetAPI.shared.listPets(search: search, page: page, limit: pageSize)
+                let response = try await activeProvider.listPets(search: search, page: page, limit: activePageSize)
                 if Task.isCancelled { return }
                 
                 await MainActor.run {
+                    guard self.currentSource == activeSource else { return }
                     self.pets = response.items
                     self.totalItems = response.total
                     self.pageSize = response.pageSize
@@ -286,6 +310,7 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
                 if Task.isCancelled { return }
                 print("Failed to load pets: \(error)")
                 await MainActor.run {
+                    guard self.currentSource == activeSource else { return }
                     self.isLoading = false
                     self.loadingIndicator.stopAnimation(nil)
                     self.showErrorAlert(message: l("market.failed_load", error.localizedDescription))
@@ -333,24 +358,81 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
         }
     }
 
+    @objc private func sourceChanged() {
+        let selected = sourceControl.selectedSegment
+        guard selected >= 0, selected < PetMarketplaceSource.allCases.count else { return }
+        let nextSource = PetMarketplaceSource.allCases[selected]
+        guard nextSource != currentSource else { return }
+
+        currentSource = nextSource
+        selectedPet = nil
+        pets = []
+        totalItems = 0
+        currentPage = 1
+        detailTask?.cancel()
+        tableView.deselectAll(nil)
+        tableView.reloadData()
+        updateDetailUI()
+        loadData(search: searchField.stringValue, page: 1)
+    }
+
     
     @objc private func installClicked() {
         guard let pet = selectedPet else { return }
-        
+
         isInstalling = true
         installButton.isEnabled = false
-        installButton.title = "Installing..."
+        installButton.title = l("market.installing")
+        let activeProvider = provider
+        let token = UUID()
+        installToken = token
         
         Task {
             do {
-                try await PackageManager.shared.installPet(id: pet.id)
+                var expectedInstalledPetId: String?
+                if pet.trustLevel == .thirdPartyUnsigned {
+                    let inspectedPetId = try await activeProvider.inspectInstall(id: pet.sourcePetId)
+                    expectedInstalledPetId = inspectedPetId
+                    let shouldInstall = await MainActor.run {
+                        guard self.installToken == token else { return false }
+                        guard self.currentSource == pet.source, self.selectedPet?.id == pet.id else {
+                            self.installToken = nil
+                            self.isInstalling = false
+                            self.updateDetailUI()
+                            return false
+                        }
+                        return self.confirmThirdPartyInstall(pet: pet, installedPetId: inspectedPetId)
+                    }
+                    if !shouldInstall {
+                        await MainActor.run {
+                            guard self.installToken == token else { return }
+                            self.installToken = nil
+                            self.isInstalling = false
+                            self.updateDetailUI()
+                        }
+                        return
+                    }
+                }
+
+                let installedPetId = try await activeProvider.installPet(
+                    id: pet.sourcePetId,
+                    expectedInstalledPetId: expectedInstalledPetId
+                )
                 await MainActor.run {
+                    guard self.installToken == token else { return }
+                    self.installToken = nil
                     self.isInstalling = false
+                    self.installedPetIdOverrides[pet.id] = installedPetId
+                    guard self.currentSource == pet.source, self.selectedPet?.id == pet.id else {
+                        self.updateDetailUI()
+                        return
+                    }
+                    LocalPetManager.shared.refresh()
                     self.updateDetailUI()
                     
                     let alert = NSAlert()
                     alert.messageText = l("market.install_success_title")
-                    alert.informativeText = l("market.install_success_message", pet.name)
+                    alert.informativeText = l("market.install_success_message", "\(pet.name) (\(installedPetId))")
                     alert.addButton(withTitle: l("manage.open_codex_settings"))
                     alert.addButton(withTitle: l("ok"))
                     if alert.runModal() == .alertFirstButtonReturn {
@@ -359,7 +441,13 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
                 }
             } catch {
                 await MainActor.run {
+                    guard self.installToken == token else { return }
+                    self.installToken = nil
                     self.isInstalling = false
+                    guard self.currentSource == pet.source, self.selectedPet?.id == pet.id else {
+                        self.updateDetailUI()
+                        return
+                    }
                     self.installButton.isEnabled = true
                     self.installButton.title = l("market.install")
                     
@@ -373,15 +461,28 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
     }
     
     @objc private func openWebsite() {
-        NSWorkspace.shared.open(URL(string: "https://codexpet.xyz")!)
+        NSWorkspace.shared.open(provider.websiteURL)
     }
 
     @objc private func openSelectedPetWebsite() {
         guard let pet = selectedPet else { return }
-        let urlStr = !pet.detailUrl.isEmpty ? pet.detailUrl : "https://codexpet.xyz/share/\(pet.id)"
+        let urlStr = !pet.detailUrl.isEmpty ? pet.detailUrl : provider.websiteURL.absoluteString
         if let url = URL(string: urlStr) {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    private func confirmThirdPartyInstall(pet: MarketplacePetDetail, installedPetId: String) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = l("market.third_party_confirm_title")
+        var message = l("market.third_party_confirm_message", pet.source.displayName, installedPetId)
+        if PackageManager.shared.isPetInstalled(id: installedPetId) {
+            message += "\n\n" + l("market.third_party_replace_warning", installedPetId)
+        }
+        alert.informativeText = message
+        alert.addButton(withTitle: l("market.install"))
+        alert.addButton(withTitle: l("cancel"))
+        return alert.runModal() == .alertFirstButtonReturn
     }
     
     @objc private func actionChanged() {
@@ -412,8 +513,11 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
     private func updateDetailUI() {
         guard let pet = selectedPet else {
             detailContainer.isHidden = true
-            websiteButton.title = l("menu.open_website")
+            websiteButton.title = l("market.open_source_website", currentSource.displayName)
             websiteButton.action = #selector(openWebsite)
+            spritesheetImage = nil
+            spriteDescriptor = nil
+            previewView.setFrames([])
             return
         }
         
@@ -422,18 +526,28 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
         authorLabel.stringValue = "by \(pet.author)"
         descriptionLabel.stringValue = pet.description
         
-        let dateStr = pet.updatedAt.prefix(10)
-        metaLabel.stringValue = "License: \(pet.license) | Updated: \(dateStr)"
+        let dateStr = pet.updatedAt.isEmpty ? "Unknown" : String(pet.updatedAt.prefix(10))
+        switch pet.trustLevel {
+        case .platformVerified:
+            metaLabel.stringValue = "Source: \(pet.source.displayName) | License: \(pet.license) | Updated: \(dateStr)"
+        case .thirdPartyUnsigned:
+            metaLabel.stringValue = "Source: \(pet.source.displayName) | Third-party unsigned package | License: \(pet.license)"
+        }
         tagsLabel.stringValue = pet.tags.map { "#\($0)" }.joined(separator: " ")
         
-        let isInstalled = PackageManager.shared.isPetInstalled(id: pet.id)
+        let installedPetId = installedPetId(for: pet)
+        let isInstalled = PackageManager.shared.isPetInstalled(id: installedPetId)
         installButton.title = isInstalled ? l("market.reinstall") : l("market.install")
         installButton.isEnabled = !isInstalling
         
-        websiteButton.title = l("market.view_on_website")
+        websiteButton.title = l("market.view_on_source", pet.source.displayName)
         websiteButton.action = #selector(openSelectedPetWebsite)
         
-        statusLabel.stringValue = "ID: \(pet.id) | Version: \(pet.version) | Downloads: \(pet.downloads)"
+        if pet.trustLevel == .thirdPartyUnsigned {
+            statusLabel.stringValue = "Package ID: \(installedPetId) | " + l("market.third_party_status")
+        } else {
+            statusLabel.stringValue = "ID: \(installedPetId) | Version: \(pet.version) | Downloads: \(pet.downloads)"
+        }
         
         // Load Preview
         detailTask?.cancel()
@@ -511,6 +625,10 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
             PetImageCache.shared.setAnimation(frames, for: petId, action: action.id)
         }
         previewView.setFrames(frames)
+    }
+
+    private func installedPetId(for pet: MarketplacePetDetail) -> String {
+        installedPetIdOverrides[pet.id] ?? pet.installedPetId
     }
 
 
@@ -642,13 +760,16 @@ final class OnlinePetMarketplaceViewController: NSViewController, NSTableViewDel
         
         let petSummary = pets[row]
         detailTask?.cancel()
+        let activeProvider = provider
+        let activeSource = currentSource
         
         detailTask = Task {
             do {
-                let detail = try await CodexPetAPI.shared.getPet(id: petSummary.id)
+                let detail = try await activeProvider.getPet(id: petSummary.sourcePetId)
                 if Task.isCancelled { return }
                 
                 await MainActor.run {
+                    guard self.currentSource == activeSource else { return }
                     self.selectedPet = detail
                     self.updateDetailUI()
                 }

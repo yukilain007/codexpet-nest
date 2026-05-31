@@ -42,7 +42,7 @@ CodexPet Nest 是 [codexpet.xyz](https://codexpet.xyz) 的 macOS 桌面伴侣应
   - 支持安装本地宠物 ZIP 包。
   - 只读识别当前活动宠物。
 - **在线宠物市场**：
-  - 在应用内浏览并一键下载 [codexpet.xyz](https://codexpet.xyz) 上的宠物。
+  - 在应用内浏览并一键下载 [codexpet.xyz](https://codexpet.xyz) 和 [Petdex](https://petdex.crafter.run) 上的宠物。
 - **本地 Nest Skin 管理**：
   - 预览并切换小窝外观。支持自动安装内置皮肤。
 - **在线 Nest 市场**：
@@ -77,7 +77,14 @@ CodexPet Nest 是 [codexpet.xyz](https://codexpet.xyz) 的 macOS 桌面伴侣应
 #### 切换小窝外观
 
 1. 在菜单栏点击“Nest Marketplace”或“Local Nests”。
-2. 选择喜欢的外观点击“Apply Now”。
+2. 选择喜欢的外观点击"Apply Now"。
+
+#### 讲解视频
+
+| 语言 | 链接 |
+|------|------|
+| 中文 | [Bilibili 讲解视频](https://www.bilibili.com/video/BV1JE5S65ECi) |
+| English | [YouTube Demo Video](https://youtu.be/b2-iZmC5E_Q) |
 
 ### 卸载
 
@@ -181,6 +188,7 @@ codexpet-nest/
 
 - CodexPet Nest 的悬浮伴随窗口方案受 [codex-pet-limit-rings](https://github.com/petergpt/codex-pet-limit-rings) 启发——该项目由 petergpt 开发并以 MIT 协议开源，展示了一种无需修改 Codex 即可让透明置顶窗口跟随 Codex pet 移动的实现方式。
 - 特别感谢 [LINUX DO](https://linux.do) 社区的支持与灵感。
+- 宠物市场集成 [Petdex](https://petdex.crafter.run) 作为第三方宠物来源。
 
 CodexPet Nest 是一个独立项目，专注于宠物小窝、小组件、市场安装与创作者上传流程。除非后续项目材料中明确声明，否则 CodexPet Nest 与 codex-pet-limit-rings、petergpt、OpenAI 或 Codex 均无关联。
 
@@ -229,7 +237,7 @@ CodexPet Nest is a macOS desktop companion app for [codexpet.xyz](https://codexp
 - **Local Pet Management**:
   - Automatically scans and lists installed Codex pets. Supports local ZIP installation.
 - **Online Pet Marketplace**:
-  - Browse and download pets from [codexpet.xyz](https://codexpet.xyz).
+  - Browse and download pets from both [codexpet.xyz](https://codexpet.xyz) and [Petdex](https://petdex.crafter.run).
 - **Local Nest Skin Management**:
   - Preview and switch nest skins. Automatically installs built-in skins.
 - **Online Nest Marketplace**:
@@ -265,6 +273,15 @@ You can download the latest version from:
 
 1. Click "Nest Marketplace" or "Local Nests" in the menu bar.
 2. Choose your preferred appearance and click "Apply Now."
+
+#### Demo Videos
+
+[![CodexPet Nest Demo](https://img.youtube.com/vi/b2-iZmC5E_Q/0.jpg)](https://youtu.be/b2-iZmC5E_Q)
+
+| Language | Link |
+|----------|------|
+| 中文 | [Bilibili 讲解视频](https://www.bilibili.com/video/BV1JE5S65ECi) |
+| English | [YouTube Demo Video](https://youtu.be/b2-iZmC5E_Q) |
 
 ### Uninstallation
 
@@ -368,6 +385,7 @@ See [docs/architecture.md](docs/architecture.md) for details.
 
 - CodexPet Nest's companion-window approach was inspired by [codex-pet-limit-rings](https://github.com/petergpt/codex-pet-limit-rings)—an MIT-licensed project by petergpt that demonstrates how a transparent, always-on-top window can follow the active Codex pet without patching Codex.
 - Special thanks to the [LINUX DO](https://linux.do) community for their support and inspiration.
+- The pet marketplace integrates [Petdex](https://petdex.crafter.run) as a third-party pet source.
 
 CodexPet Nest is an independent project focused on pet nests, widgets, marketplace installation, and creator workflows. Unless explicitly stated in future project materials, CodexPet Nest has no affiliation with codex-pet-limit-rings, petergpt, OpenAI, or Codex.
 

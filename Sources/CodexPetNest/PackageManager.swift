@@ -119,6 +119,36 @@ final class PackageManager {
         try await processInstall(data: data, expectedSHA256: nil, type: .nest)
     }
 
+    func installExternalPet(downloadURL: String, source: String, expectedManifestId: String? = nil) async throws -> String {
+        guard let url = URL(string: downloadURL) else {
+            throw PackageManagerError.downloadFailed("Invalid external pet download URL")
+        }
+
+        try validateExternalPetDownloadURL(url, source: source)
+        let data = try await downloadExternalPetData(downloadURL: downloadURL)
+        let inspectedManifest = try await inspectPackage(data: data, type: .pet)
+        if let expectedManifestId, inspectedManifest.id != expectedManifestId {
+            throw PackageManagerError.invalidManifest("External pet id changed between confirmation and install. Expected \(expectedManifestId), got \(inspectedManifest.id)")
+        }
+        let manifest = try await processInstall(data: data, expectedSHA256: nil, type: .pet)
+
+        await AppAnalytics.shared.report(
+            eventName: "external_pet_install_success",
+            metadata: ["source": source, "id": manifest.id]
+        )
+        return manifest.id
+    }
+
+    func inspectExternalPet(downloadURL: String, source: String) async throws -> PackageManifest {
+        guard let url = URL(string: downloadURL) else {
+            throw PackageManagerError.downloadFailed("Invalid external pet download URL")
+        }
+
+        try validateExternalPetDownloadURL(url, source: source)
+        let data = try await downloadExternalPetData(downloadURL: downloadURL)
+        return try await inspectPackage(data: data, type: .pet)
+    }
+
     func installNest(id: String) async throws {
         do {
             let meta = try await api.getNestDownload(id: id)
@@ -166,6 +196,33 @@ final class PackageManager {
         return data
     }
 
+    private func validateExternalPetDownloadURL(_ url: URL, source: String) throws {
+        guard url.scheme?.lowercased() == "https" else {
+            throw PackageManagerError.downloadFailed("External pet downloads must use HTTPS")
+        }
+
+        if source == "petdex" {
+            let allowedHosts = [
+                "petdex.crafter.run",
+                "pub-94495283df974cfea5e98d6a9e3fa462.r2.dev"
+            ]
+            guard let host = url.host?.lowercased(), allowedHosts.contains(host) else {
+                throw PackageManagerError.downloadFailed("Unexpected Petdex download host: \(url.host ?? "unknown")")
+            }
+        }
+    }
+
+    private func downloadExternalPetData(downloadURL: String) async throws -> Data {
+        let (data, response) = try await api.downloadFile(url: downloadURL)
+        guard let http = response as? HTTPURLResponse else {
+            throw PackageManagerError.downloadFailed("Invalid HTTP response")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw PackageManagerError.downloadFailed("HTTP \(http.statusCode) for external pet download")
+        }
+        return data
+    }
+
     private func inspectPackage(data: Data, type: PackageType) async throws -> PackageManifest {
         let workDir = tempDir.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: workDir, withIntermediateDirectories: true)
@@ -182,7 +239,8 @@ final class PackageManager {
         return manifest
     }
 
-    private func processInstall(data: Data, expectedSHA256: String?, type: PackageType) async throws {
+    @discardableResult
+    private func processInstall(data: Data, expectedSHA256: String?, type: PackageType) async throws -> PackageManifest {
         if let expected = expectedSHA256 {
             let actual = sha256Hex(data)
             guard actual == expected else {
@@ -226,6 +284,7 @@ final class PackageManager {
             LocalNestManager.shared.refresh()
             await AppAnalytics.shared.report(eventName: "nest_install_success", metadata: ["id": manifest.id])
         }
+        return manifest
     }
 
     // MARK: - Validation
