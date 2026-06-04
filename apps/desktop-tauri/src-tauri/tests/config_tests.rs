@@ -9,6 +9,7 @@ fn test_app_config_data_directory_resolves() {
     );
 
     let data_dir = dirs.unwrap().data_dir().to_string_lossy().to_string();
+    assert!(!data_dir.is_empty(), "data dir should not be empty");
 
     #[cfg(target_os = "macos")]
     assert!(
