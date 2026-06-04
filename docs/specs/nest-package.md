@@ -27,6 +27,7 @@ LICENSE                 # (可选) 许可证
 虽然大多数小窝是基于 `nest.json` 的静态配置，但 CodexPet Nest 支持官方内置的动态渲染器。这些渲染器直接在 Swift 代码中实现，以获得更高的性能和复杂的交互能力（如实时圆环）。
 
 目前支持的内置 ID：
+
 - `default`: 经典的横条式小窝。
 - `capacity-orbit-nest`: 围绕宠物的动态 Usage 圆环。
 
@@ -104,6 +105,7 @@ LICENSE                 # (可选) 许可证
 ## 5. 示例
 
 ### codexpet-package.json
+
 ```json
 {
   "type": "codexpet.nest",
@@ -120,6 +122,7 @@ LICENSE                 # (可选) 许可证
 ```
 
 ### nest.json
+
 ```json
 {
   "schemaVersion": "1.0.0",
