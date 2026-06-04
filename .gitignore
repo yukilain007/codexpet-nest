@@ -1,11 +1,16 @@
-.build/
-DerivedData/
-*.xcodeproj
-*.xcworkspace
-xcuserdata/
+# Node.js / pnpm
+node_modules/
+*.tsbuildinfo
+dist/
+.vite/
+
+# Rust / Cargo
+target/
+**/target/
+
+# Tauri generated
+**/src-tauri/gen/
+
+# IDE
 .DS_Store
-app-session-*.js
-main-*.js
-scratch/
-test_packages/
 .idea/
