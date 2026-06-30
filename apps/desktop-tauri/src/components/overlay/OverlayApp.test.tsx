@@ -47,9 +47,8 @@ describe('OverlayApp', () => {
     useRegistryStore.setState({ registry, isLoading: false });
     useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
     render(<OverlayApp />);
-    expect(screen.getByTestId('nest-render-model')).toBeInTheDocument();
-    expect(screen.getByTestId('widget-slot-clock')).toBeInTheDocument();
-    expect(screen.getByText(/Usage 68%/)).toBeInTheDocument();
+    expect(screen.getByTestId('local-companion-pet')).toBeInTheDocument();
+    expect(screen.queryByTestId('nest-render-model')).not.toBeInTheDocument();
     expect(screen.getByTestId('quick-actions')).toBeInTheDocument();
     expect(screen.queryByTestId('debug-overlay-label')).not.toBeInTheDocument();
     expect(screen.queryByTestId('debug-platform-label')).not.toBeInTheDocument();
@@ -165,7 +164,7 @@ describe('OverlayApp', () => {
     expect(screen.queryByText(/Runtime:/)).not.toBeInTheDocument();
   });
 
-  it('should switch built-in nest fixture in the overlay', async () => {
+  it('should keep debug nest controls while showing the local companion', async () => {
     useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
     useRegistryStore.setState({ registry, isLoading: false });
     useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
@@ -173,8 +172,8 @@ describe('OverlayApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'capacity-orbit' }));
 
-    expect(await screen.findByText('capacity-orbit-nest')).toBeInTheDocument();
-    expect(await screen.findByTestId('metric-gauge-quota-ring')).toBeInTheDocument();
+    expect(screen.getByTestId('local-companion-pet')).toBeInTheDocument();
+    expect(screen.queryByTestId('nest-render-model')).not.toBeInTheDocument();
     expect(await screen.findByText(/Waiting for Codex pet position/)).toBeInTheDocument();
   });
 
@@ -192,7 +191,7 @@ describe('OverlayApp', () => {
 
     render(<OverlayApp />);
 
-    expect(screen.getByText('basket-pomodoro-nest')).toBeInTheDocument();
+    expect(screen.getByTestId('local-companion-pet')).toBeInTheDocument();
     expect(screen.getByText(/mode: standalone-fixed/)).toBeInTheDocument();
     expect(await screen.findByText(/Restored saved overlay position/)).toBeInTheDocument();
   });
@@ -274,7 +273,7 @@ describe('OverlayApp', () => {
     expect(
       await screen.findByText(/Missing local assets: assets\/missing.png/),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('nest-render-model')).toBeInTheDocument();
+    expect(screen.getByTestId('local-companion-pet')).toBeInTheDocument();
   });
 
   it('should receive pointer events on drag bar and start manual fallback drag', async () => {

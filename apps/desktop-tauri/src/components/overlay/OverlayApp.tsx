@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { buildNestRenderModel, createMetricSnapshot } from '@codexpet/renderer';
-import { builtInNestFixtures, getBuiltInNestFixture } from '@codexpet/renderer/fixtures/nests';
+import { builtInNestFixtures } from '@codexpet/renderer/fixtures/nests';
 import {
   getOverlayRuntimeDecision,
   persistStandalonePosition,
   validateWidgetActionConfig,
 } from '@codexpet/core';
 import type { ActionPlatform, QuickActionSettings } from '@codexpet/core';
-import type { NestLayoutManifest } from '@codexpet/core';
+import { LocalCompanionOverlay } from '@/components/companion/LocalCompanionOverlay';
 import { useAppConfigStore } from '@/store/appConfigStore';
 import {
   getEnabledNestEntries,
@@ -19,7 +18,6 @@ import {
 } from '@/store/registryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { CodexStateDebug, ConvertedPosition, ScreenInfo } from '@/store/debugStore';
-import { NestOverlayView } from './NestOverlayView';
 
 interface OverlayPosition {
   x: number;
@@ -47,7 +45,6 @@ interface DragDiagnostics {
 }
 
 interface ImportedNestPackage {
-  nestLayout: NestLayoutManifest;
   missingAssets: string[];
 }
 
@@ -82,9 +79,7 @@ export function OverlayApp() {
   const selectedNestId = selectedNestEntry?.id ?? builtInNestFixtures[0]?.id ?? 'default';
   const overlayMode = settings.overlayMode;
   const [runtimeStatus, setRuntimeStatus] = useState('Checking Codex position...');
-  const [importedNest, setImportedNest] = useState<ImportedNestPackage | null>(null);
   const [assetIssue, setAssetIssue] = useState<string | null>(null);
-  const [now, setNow] = useState(() => new Date());
   const [confirmingActionId, setConfirmingActionId] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<string | null>(null);
   const [dragDiagnostics, setDragDiagnostics] = useState<DragDiagnostics>(initialDragDiagnostics);
@@ -106,13 +101,6 @@ export function OverlayApp() {
   const quickActions = widgetActionConfig.quickActions.filter(
     (action) => action.enabled && action.kind !== 'shell-placeholder',
   );
-  const runtimeMetrics = createMetricSnapshot(now);
-  const slotContent = buildSlotContent(settings.widgets, now, quickActions.length);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(new Date()), 30_000);
-    return () => window.clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     writeDragDiagnostics(dragDiagnostics);
@@ -136,7 +124,6 @@ export function OverlayApp() {
   useEffect(() => {
     if (isLoading || settingsLoading || registryLoading) return;
     if (!selectedNestEntry || isBuiltInEntry(selectedNestEntry.assetRoot)) {
-      setImportedNest(null);
       setAssetIssue(null);
       return;
     }
@@ -148,7 +135,6 @@ export function OverlayApp() {
     })
       .then((pkg) => {
         if (cancelled) return;
-        setImportedNest(pkg);
         setAssetIssue(
           pkg.missingAssets.length > 0
             ? `Missing local assets: ${pkg.missingAssets.join(', ')}`
@@ -157,7 +143,6 @@ export function OverlayApp() {
       })
       .catch((loadError) => {
         if (cancelled) return;
-        setImportedNest(null);
         setAssetIssue(`Local package load failed: ${String(loadError)}`);
       });
     return () => {
@@ -560,16 +545,7 @@ export function OverlayApp() {
       )}
 
       <div style={{ position: 'relative', zIndex: 5, textAlign: 'center' }}>
-        <NestOverlayView
-          model={createRenderModel(
-            selectedNestId,
-            selectedNestEntry?.assetRoot,
-            importedNest,
-            runtimeMetrics,
-          )}
-          selectedNestId={selectedNestId}
-          slotContent={slotContent}
-        />
+        <LocalCompanionOverlay clickThrough={interactiveDisabled} />
         {interactiveDisabled && quickActions.length > 0 && (
           <div
             data-testid="overlay-interaction-disabled"
@@ -680,52 +656,6 @@ function writeFollowDiagnostics(diagnostics: OverlayFollowDiagnostics) {
   window.localStorage.setItem(FOLLOW_DIAGNOSTICS_KEY, JSON.stringify(diagnostics));
 }
 
-function createRenderModel(
-  selectedNestId: string,
-  assetRoot: string | undefined,
-  importedNest: ImportedNestPackage | null,
-  metrics = createMetricSnapshot(),
-) {
-  if (importedNest && assetRoot && !isBuiltInEntry(assetRoot)) {
-    const missingAssets = new Set(importedNest.missingAssets);
-    return buildNestRenderModel({
-      theme: importedNest.nestLayout,
-      metrics,
-      resolveAsset: (path) => (missingAssets.has(path) ? null : localAssetUrl(assetRoot, path)),
-    });
-  }
-
-  const fixture = getBuiltInNestFixture(selectedNestId) ?? builtInNestFixtures[0];
-  if (!fixture) {
-    throw new Error('No built-in nest fixtures are available');
-  }
-  return buildNestRenderModel({
-    theme: fixture.nestLayout,
-    metrics,
-    resolveAsset: (path) => fixture.assets[path] ?? null,
-  });
-}
-
-function buildSlotContent(
-  widgets: { id: string; type: string; enabled: boolean; slot: string }[],
-  now: Date,
-  actionCount: number,
-): Record<string, string> {
-  const content: Record<string, string> = {};
-  for (const widget of widgets) {
-    if (!widget.enabled) continue;
-    if (widget.slot === 'clock') {
-      content[widget.slot] =
-        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    } else if (widget.slot === 'usage') {
-      content[widget.slot] = 'Usage 68%';
-    } else if (widget.slot === 'actions') {
-      content[widget.slot] = `${actionCount} actions`;
-    }
-  }
-  return content;
-}
-
 function toActionPlatform(platform: string): ActionPlatform {
   if (platform === 'macos' || platform === 'windows' || platform === 'linux') return platform;
   return 'all';
@@ -733,8 +663,4 @@ function toActionPlatform(platform: string): ActionPlatform {
 
 function isBuiltInEntry(assetRoot: string): boolean {
   return assetRoot.startsWith('builtin/');
-}
-
-function localAssetUrl(assetRoot: string, path: string): string {
-  return convertFileSrc(`${assetRoot.replace(/\/$/, '')}/${path}`);
 }

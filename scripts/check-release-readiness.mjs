@@ -60,7 +60,12 @@ check('tray show overlay menu item', traySource.includes('Show Overlay'), 'tray/
 check('tray hide overlay menu item', traySource.includes('Hide Overlay'), 'tray/builder.rs');
 check('tray open settings menu item', traySource.includes('Open Settings'), 'tray/builder.rs');
 check('settings close-to-hide registered', windowSource.includes('CloseRequested') && windowSource.includes('prevent_close'), 'windows/setup.rs');
-check('release overlay size configured', windowSource.includes('320.0') && windowSource.includes('180.0'), 'windows/setup.rs');
+check(
+  'release overlay size configured',
+  windowSource.includes('RELEASE_OVERLAY_WIDTH: f64 = 360.0') &&
+    windowSource.includes('RELEASE_OVERLAY_HEIGHT: f64 = 280.0'),
+  'windows/setup.rs',
+);
 check('debug overlay gated by backend config', overlaySource.includes('const isDevOverlay = config.isDebug === true'), 'OverlayApp.tsx');
 check('overlay does not use Vite dev flag for debug UI', !overlaySource.includes('import.meta.env.DEV'), 'OverlayApp.tsx');
 check('click-through hides quick actions', overlaySource.includes('overlay-interaction-disabled') && overlaySource.includes('Click-through is on'), 'OverlayApp.tsx');

@@ -40,6 +40,8 @@ const codexState = {
   codex_home: '/tmp/.codex',
 };
 
+ensureTestLocalStorage();
+
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: vi.fn((path: string) => `asset://${path}`),
   invoke: vi.fn(),
@@ -153,3 +155,28 @@ beforeEach(async () => {
     }
   });
 });
+
+function ensureTestLocalStorage() {
+  if (typeof window.localStorage !== 'undefined') return;
+
+  const values = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return values.size;
+    },
+    clear: () => values.clear(),
+    getItem: (key: string) => values.get(key) ?? null,
+    key: (index: number) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key: string) => {
+      values.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      values.set(key, value);
+    },
+  };
+
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: storage,
+  });
+}
