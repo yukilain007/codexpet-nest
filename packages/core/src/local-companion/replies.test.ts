@@ -18,7 +18,7 @@ describe('local companion replies', () => {
   it('uses secret mode for repeated clicks', () => {
     expect(
       categoryForInteraction({
-        now: new Date('2026-06-30T12:00:00+08:00'),
+        now: new Date(2026, 5, 30, 12, 0),
         clickCount: 4,
       }),
     ).toBe('secret');
@@ -27,7 +27,7 @@ describe('local companion replies', () => {
   it('uses night mode late at night before ordinary click replies', () => {
     expect(
       categoryForInteraction({
-        now: new Date('2026-06-30T23:30:00+08:00'),
+        now: new Date(2026, 5, 30, 23, 30),
         clickCount: 1,
       }),
     ).toBe('night');
@@ -36,7 +36,7 @@ describe('local companion replies', () => {
   it('uses click mode during daytime ordinary clicks', () => {
     expect(
       categoryForInteraction({
-        now: new Date('2026-06-30T15:30:00+08:00'),
+        now: new Date(2026, 5, 30, 15, 30),
         clickCount: 1,
       }),
     ).toBe('click');
