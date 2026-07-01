@@ -11,6 +11,9 @@ target/
 # Tauri generated
 **/src-tauri/gen/
 
+# Local hatch-pet work runs
+.hatch-runs/
+
 # IDE
 .DS_Store
 .idea/
