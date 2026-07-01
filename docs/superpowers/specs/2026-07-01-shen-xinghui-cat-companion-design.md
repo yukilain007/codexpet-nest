@@ -39,7 +39,7 @@ Do not change the outfit color palette:
 
 ## Personality And Expressions
 
-The pet should feel soft, serious, sleepy, slightly stubborn, and easy to fluster:
+The pet should feel soft, serious, sleepy, slightly stubborn, easy to fluster, and quietly attached:
 
 - Idle: calm blinking or gentle breathing, with a sleepy but composed expression.
 - Waving: small polite hand or paw wave, not overly energetic.
@@ -47,6 +47,12 @@ The pet should feel soft, serious, sleepy, slightly stubborn, and easy to fluste
 - Waiting: expectant and slightly confused, as if waiting for the user to respond.
 - Running/task state: focused effort, small determined fists or work posture.
 - Review: careful staring or slight lean-in, matching the "really got looked down on" meme energy.
+
+Layered character setting:
+
+- Surface: lazy and detached. Speaks slowly, often with pauses, seems low-energy, sleepy, and insensitive to ordinary social boundaries.
+- Middle: gentle guardian. Does not directly say "I miss you", but remembers preferences, quietly keeps company, and protects while pretending he just happened to pass by.
+- Deep: lonely and persistent. Carries the memory of Philos's destruction, fears losing people again, and treats "I will find you no matter where you are" as a long-held devotion rather than a casual line.
 
 Allowed sticker-like attached effects:
 
@@ -56,28 +62,28 @@ Allowed sticker-like attached effects:
 
 ## Replies
 
-Add a separate Shen Xinghui reply set. The tone should be cute, sleepy, earnest, and mildly stubborn, using the sticker references as style cues.
+Add a separate Shen Xinghui reply set. The tone should be cute, sleepy, earnest, mildly stubborn, quietly protective, and sometimes direct in a soft way.
 
-Initial categories:
+Core runtime categories:
 
 - `click`: short soft responses.
-- `idle`: sleepy or quiet companionship lines.
+- `idle`: mixed daily, care, romantic, and sleepy companionship lines.
 - `night`: bedtime or "sleepy but awake" lines.
-- `secret`: repeated-click flustered lines.
+- `secret`: repeated-click or deeper attachment lines.
 - `done`: small successful-task responses.
 - `error`: gentle failed-task responses.
 
-Candidate lines:
+Scene reply banks:
 
-- `真的被看扁了。`
-- `那我扁扁地走开。`
-- `今天一定要努力工作。`
-- `虽然什么都没干，但今天也真是辛苦我了呢。`
-- `差不多星了。`
-- `嗯嗯好的。`
-- `你少看扁我。`
-- `如果你惹毛了我，那我就毛茸茸地走开。`
-- `吃又吃不饱，睡又睡不醒。`
+- `daily`: desktop/idle daily lines such as `……别动，让我再靠一会儿。你的肩膀比枕头舒服。`
+- `care`: care and company lines such as `又加班到这么晚？我陪你，反正星星也不睡觉。`
+- `romance`: direct soft lines such as `宇宙很大，但我只想待在你的桌面上。`
+- `lazy`: sleepy and confused lines such as `晚安。……不是对你说，是对我的睡眠模式说的。但你也可以一起睡。`
+- `drag`: move/drag lines such as `你要带我去哪？……算了，去哪都行。`
+- `longIdle`: long-unanswered lines such as `……你忙完了吗？没忙完我也等你。`
+- `message`: notification/message lines such as `去回消息吧，我在这儿，不会跟别人跑的。`
+
+The first implementation can surface `click`, `secret`, `idle`, and `night` through the existing overlay. The extra scene banks are included now so future drag, idle-time, and notification hooks can reuse the same profile data without rewriting the character voice.
 
 ## Technical Design
 

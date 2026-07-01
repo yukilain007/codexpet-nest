@@ -37,7 +37,7 @@ describe('LocalCompanionOverlay', () => {
     fireEvent.click(screen.getByRole('button', { name: '和沈星回互动' }));
 
     expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(
-      /看扁|嗯嗯好的|差不多星/,
+      /戳我|点这么准|再点一下|手指不酸|确认我在/,
     );
   });
 
@@ -64,7 +64,7 @@ describe('LocalCompanionOverlay', () => {
     fireEvent.click(button);
 
     expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(
-      /少看扁我|扁扁地走开|毛茸茸地走开/,
+      /确认我在|楼下的猫很想你|无论多少次/,
     );
   });
 });
