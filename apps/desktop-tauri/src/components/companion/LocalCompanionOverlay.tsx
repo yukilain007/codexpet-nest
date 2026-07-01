@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { categoryForInteraction, selectCompanionReply } from '@codexpet/core';
+import {
+  categoryForInteraction,
+  getCompanionProfile,
+  selectCompanionReply,
+  type CompanionProfileId,
+} from '@codexpet/core';
 import { getAnimationFrameCount, type PetAnimationState } from './animation';
 import { PetSprite } from './PetSprite';
 import { SpeechBubble } from './SpeechBubble';
@@ -10,7 +15,14 @@ const CLICK_STREAK_WINDOW_MS = 2_200;
 const IDLE_REPLY_MS = 45_000;
 const SPRITE_SCALE = 0.86;
 
-export function LocalCompanionOverlay({ clickThrough }: { clickThrough: boolean }) {
+export function LocalCompanionOverlay({
+  clickThrough,
+  profileId,
+}: {
+  clickThrough: boolean;
+  profileId?: CompanionProfileId;
+}) {
+  const profile = getCompanionProfile(profileId);
   const [animationState, setAnimationState] = useState<PetAnimationState>('idle');
   const [frame, setFrame] = useState(0);
   const [reply, setReply] = useState<string | null>(null);
@@ -32,10 +44,10 @@ export function LocalCompanionOverlay({ clickThrough }: { clickThrough: boolean 
   useEffect(() => {
     if (clickThrough) return undefined;
     const timer = window.setInterval(() => {
-      setReply(selectCompanionReply('idle').text);
+      setReply(selectCompanionReply('idle', Date.now(), profile.id).text);
     }, IDLE_REPLY_MS);
     return () => window.clearInterval(timer);
-  }, [clickThrough]);
+  }, [clickThrough, profile.id]);
 
   const handleClick = () => {
     if (clickThrough) return;
@@ -44,7 +56,7 @@ export function LocalCompanionOverlay({ clickThrough }: { clickThrough: boolean 
     const count = nowMs - previous.lastAt <= CLICK_STREAK_WINDOW_MS ? previous.count + 1 : 1;
     clickStreakRef.current = { count, lastAt: nowMs };
     const category = categoryForInteraction({ now: new Date(nowMs), clickCount: count });
-    setReply(selectCompanionReply(category, nowMs).text);
+    setReply(selectCompanionReply(category, nowMs, profile.id).text);
     setAnimationState('waving');
     setFrame(0);
     window.setTimeout(() => setAnimationState('idle'), 900);
@@ -69,7 +81,7 @@ export function LocalCompanionOverlay({ clickThrough }: { clickThrough: boolean 
       </div>
       <button
         type="button"
-        aria-label="和夏以昼互动"
+        aria-label={profile.interactionLabel}
         onClick={handleClick}
         style={{
           border: 0,
@@ -78,7 +90,12 @@ export function LocalCompanionOverlay({ clickThrough }: { clickThrough: boolean 
           cursor: clickThrough ? 'default' : 'pointer',
         }}
       >
-        <PetSprite state={animationState} frame={frame} scale={SPRITE_SCALE} />
+        <PetSprite
+          state={animationState}
+          frame={frame}
+          spritesheetUrl={profile.spritesheetUrl}
+          scale={SPRITE_SCALE}
+        />
       </button>
     </div>
   );

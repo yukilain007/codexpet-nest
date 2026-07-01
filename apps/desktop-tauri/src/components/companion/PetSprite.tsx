@@ -2,7 +2,6 @@ import {
   ATLAS_COLUMNS,
   CELL_HEIGHT,
   CELL_WIDTH,
-  SPRITESHEET_URL,
   getAnimationRow,
   type PetAnimationState,
 } from './animation';
@@ -10,10 +9,12 @@ import {
 export function PetSprite({
   state,
   frame,
+  spritesheetUrl,
   scale = 1,
 }: {
   state: PetAnimationState;
   frame: number;
+  spritesheetUrl: string;
   scale?: number;
 }) {
   const animation = getAnimationRow(state);
@@ -27,7 +28,7 @@ export function PetSprite({
       style={{
         width,
         height,
-        backgroundImage: `url(${SPRITESHEET_URL})`,
+        backgroundImage: `url(${spritesheetUrl})`,
         backgroundRepeat: 'no-repeat',
         backgroundSize: `${CELL_WIDTH * ATLAS_COLUMNS * scale}px auto`,
         backgroundPosition: `-${frameIndex * width}px -${animation.row * height}px`,

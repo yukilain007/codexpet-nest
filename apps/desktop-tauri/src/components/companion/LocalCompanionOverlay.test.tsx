@@ -7,39 +7,53 @@ describe('LocalCompanionOverlay', () => {
     vi.useRealTimers();
   });
 
-  it('renders the Xia Yizhou pet sprite', () => {
+  it('renders the default Shen Xinghui pet sprite', () => {
     render(<LocalCompanionOverlay clickThrough={false} />);
 
     expect(screen.getByTestId('local-companion-root')).toHaveStyle({
       width: '320px',
       minHeight: '236px',
     });
-    expect(screen.getByTestId('local-companion-pet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '和沈星回互动' })).toBeInTheDocument();
+    expect(screen.getByTestId('local-companion-pet')).toHaveStyle({
+      backgroundImage: 'url(/pets/shen-xinghui/spritesheet.webp)',
+    });
   });
 
-  it('shows a local reply when clicked', () => {
+  it('can still render the Xia Yizhou pet profile', () => {
+    render(<LocalCompanionOverlay clickThrough={false} profileId="xia-yizhou" />);
+
+    expect(screen.getByRole('button', { name: '和夏以昼互动' })).toBeInTheDocument();
+    expect(screen.getByTestId('local-companion-pet')).toHaveStyle({
+      backgroundImage: 'url(/pets/xia-yizhou/spritesheet.webp)',
+    });
+  });
+
+  it('shows a Shen Xinghui local reply when clicked', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-06-30T15:30:00+08:00'));
+    vi.setSystemTime(new Date(2026, 6, 1, 15, 30));
     render(<LocalCompanionOverlay clickThrough={false} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '和夏以昼互动' }));
+    fireEvent.click(screen.getByRole('button', { name: '和沈星回互动' }));
 
-    expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(/我在|怎么了|心事/);
+    expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(
+      /看扁|嗯嗯好的|差不多星/,
+    );
   });
 
   it('does not handle clicks when click-through is enabled', () => {
     render(<LocalCompanionOverlay clickThrough />);
 
-    fireEvent.click(screen.getByRole('button', { name: '和夏以昼互动' }));
+    fireEvent.click(screen.getByRole('button', { name: '和沈星回互动' }));
 
     expect(screen.queryByTestId('local-companion-bubble')).not.toBeInTheDocument();
   });
 
   it('can show hidden stronger lines after repeated clicks', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-06-30T15:30:00+08:00'));
+    vi.setSystemTime(new Date(2026, 6, 1, 15, 30));
     render(<LocalCompanionOverlay clickThrough={false} />);
-    const button = screen.getByRole('button', { name: '和夏以昼互动' });
+    const button = screen.getByRole('button', { name: '和沈星回互动' });
 
     fireEvent.click(button);
     act(() => vi.advanceTimersByTime(200));
@@ -50,7 +64,7 @@ describe('LocalCompanionOverlay', () => {
     fireEvent.click(button);
 
     expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(
-      /不要瞒着我|全都知道|妹妹/,
+      /少看扁我|扁扁地走开|毛茸茸地走开/,
     );
   });
 });
