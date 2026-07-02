@@ -7,16 +7,16 @@ describe('LocalCompanionOverlay', () => {
     vi.useRealTimers();
   });
 
-  it('renders the default Shen Xinghui pet sprite', () => {
+  it('renders the default Xia Yizhou pet sprite', () => {
     render(<LocalCompanionOverlay clickThrough={false} />);
 
     expect(screen.getByTestId('local-companion-root')).toHaveStyle({
       width: '320px',
       minHeight: '236px',
     });
-    expect(screen.getByRole('button', { name: '和沈星回互动' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '和夏以昼互动' })).toBeInTheDocument();
     expect(screen.getByTestId('local-companion-pet')).toHaveStyle({
-      backgroundImage: 'url(/pets/shen-xinghui/spritesheet.webp)',
+      backgroundImage: 'url(/pets/xia-yizhou/spritesheet.webp)',
     });
   });
 
@@ -29,12 +29,12 @@ describe('LocalCompanionOverlay', () => {
     });
   });
 
-  it('shows a Shen Xinghui local reply when clicked', () => {
+  it('shows a Xia Yizhou local reply when clicked', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 1, 15, 30));
     render(<LocalCompanionOverlay clickThrough={false} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '和沈星回互动' }));
+    fireEvent.click(screen.getByRole('button', { name: '和夏以昼互动' }));
 
     expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(
       /戳我|点这么准|再点一下|手指不酸|确认我在/,
@@ -44,7 +44,7 @@ describe('LocalCompanionOverlay', () => {
   it('does not handle clicks when click-through is enabled', () => {
     render(<LocalCompanionOverlay clickThrough />);
 
-    fireEvent.click(screen.getByRole('button', { name: '和沈星回互动' }));
+    fireEvent.click(screen.getByRole('button', { name: '和夏以昼互动' }));
 
     expect(screen.queryByTestId('local-companion-bubble')).not.toBeInTheDocument();
   });
@@ -53,7 +53,7 @@ describe('LocalCompanionOverlay', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 1, 15, 30));
     render(<LocalCompanionOverlay clickThrough={false} />);
-    const button = screen.getByRole('button', { name: '和沈星回互动' });
+    const button = screen.getByRole('button', { name: '和夏以昼互动' });
 
     fireEvent.click(button);
     act(() => vi.advanceTimersByTime(200));
@@ -64,7 +64,7 @@ describe('LocalCompanionOverlay', () => {
     fireEvent.click(button);
 
     expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(
-      /确认我在|楼下的猫很想你|无论多少次/,
+      /确认我在|戳我|点这么准|再点一下|手指不酸/,
     );
   });
 });

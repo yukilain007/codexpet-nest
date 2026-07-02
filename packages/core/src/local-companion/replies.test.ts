@@ -3,6 +3,7 @@ import {
   COMPANION_PROFILES,
   DEFAULT_COMPANION_PROFILE_ID,
   SHEN_XINGHUI_REPLIES,
+  XIA_YIZHOU_DIALOGUES,
   XIA_YIZHOU_REPLIES,
   categoryForInteraction,
   getCompanionProfile,
@@ -13,14 +14,20 @@ describe('local companion replies', () => {
   it('selects a stable click reply by seed', () => {
     const reply = selectCompanionReply('click', 0);
 
-    expect(reply).toEqual({ category: 'click', text: XIA_YIZHOU_REPLIES.click[0] });
+    expect(reply).toMatchObject({
+      category: 'click',
+      text: XIA_YIZHOU_REPLIES.click[0],
+      emotion: '慵懒',
+      note: '被点击基础反应',
+      weight: 8,
+    });
   });
 
   it('wraps seeded selection within the category list', () => {
-    const reply = selectCompanionReply('secret', 999);
+    const reply = selectCompanionReply('high_favor', 999, 'xia-yizhou');
 
-    expect(reply.category).toBe('secret');
-    expect(XIA_YIZHOU_REPLIES.secret).toContain(reply.text);
+    expect(reply.category).toBe('high_favor');
+    expect(XIA_YIZHOU_REPLIES.high_favor).toContain(reply.text);
   });
 
   it('uses secret mode for repeated clicks', () => {
@@ -63,12 +70,51 @@ describe('local companion replies', () => {
     const xiaReply = selectCompanionReply('click', 0, 'xia-yizhou');
     const shenReply = selectCompanionReply('click', 0, 'shen-xinghui');
 
-    expect(xiaReply.text).toBe('我在。');
+    expect(xiaReply.text).toBe('……戳我？那我也戳戳你。在心里。');
     expect(shenReply.text).toBe('……戳我？那我也戳戳你。在心里。');
   });
 
-  it('defaults companion profile lookup to Shen Xinghui for this QA pass', () => {
-    expect(DEFAULT_COMPANION_PROFILE_ID).toBe('shen-xinghui');
+  it('stores the requested Xia Yizhou scene dialogue metadata', () => {
+    expect(XIA_YIZHOU_DIALOGUES).toHaveLength(40);
+    expect(XIA_YIZHOU_DIALOGUES.every((line) => line.trigger && line.emotion && line.note)).toBe(
+      true,
+    );
+    expect(XIA_YIZHOU_DIALOGUES).toContainEqual({
+      trigger: 'idle',
+      weight: 5,
+      emotion: '慵懒',
+      dialogue: '又在发呆？……算了，我陪你一起发。',
+      note: '待机基础台词',
+    });
+    expect(XIA_YIZHOU_DIALOGUES).toContainEqual({
+      trigger: 'jealousy',
+      weight: 3,
+      emotion: '霸道',
+      dialogue: '我不罩着你，难道还要别的人来？',
+      note: '检测到用户搜索/打开其他桌宠相关内容',
+    });
+  });
+
+  it('selects Xia Yizhou scene replies by weight ranges', () => {
+    expect(selectCompanionReply('click', 0, 'xia-yizhou')).toMatchObject({
+      category: 'click',
+      text: '……戳我？那我也戳戳你。在心里。',
+      emotion: '慵懒',
+    });
+    expect(selectCompanionReply('click', 8, 'xia-yizhou')).toMatchObject({
+      category: 'click',
+      text: '点这么准，平时没少练吧？',
+      emotion: '调侃',
+    });
+    expect(selectCompanionReply('notification', 13, 'xia-yizhou')).toMatchObject({
+      category: 'notification',
+      text: '回得这么快，是重要的人？……我也是重要的人吧。',
+      emotion: '吃醋',
+    });
+  });
+
+  it('defaults companion profile lookup to Xia Yizhou for the independent build', () => {
+    expect(DEFAULT_COMPANION_PROFILE_ID).toBe('xia-yizhou');
     expect(getCompanionProfile().id).toBe(DEFAULT_COMPANION_PROFILE_ID);
   });
 
@@ -107,9 +153,9 @@ describe('local companion replies', () => {
   });
 
   it('falls back to core click replies when a profile lacks an optional scene bank', () => {
-    expect(selectCompanionReply('drag', 0, 'xia-yizhou')).toEqual({
+    expect(selectCompanionReply('drag', 0, 'shen-xinghui')).toEqual({
       category: 'drag',
-      text: '我在。',
+      text: '你要带我去哪？……算了，去哪都行。',
     });
   });
 });
