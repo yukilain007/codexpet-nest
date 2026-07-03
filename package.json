@@ -15,7 +15,8 @@
     "rust:build": "cd apps/desktop-tauri/src-tauri && cargo build",
     "qa:release-smoke": "node scripts/check-release-readiness.mjs",
     "tauri:dev": "pnpm --filter @codexpet/desktop-tauri tauri dev",
-    "tauri:build": "pnpm --filter @codexpet/desktop-tauri tauri build",
+    "tauri:build": "node scripts/build-tauri-variants.mjs",
+    "tauri:build:default": "pnpm --filter @codexpet/desktop-tauri tauri build",
     "tauri:build:app": "pnpm --filter @codexpet/desktop-tauri tauri build --bundles app",
     "tauri:build:mac:dmg": "node scripts/package-macos-dmg.mjs"
   },

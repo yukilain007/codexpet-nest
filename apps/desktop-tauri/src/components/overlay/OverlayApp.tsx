@@ -9,6 +9,7 @@ import {
   validateWidgetActionConfig,
 } from '@codexpet/core';
 import type { ActionPlatform, QuickActionSettings } from '@codexpet/core';
+import { getBuildCompanionProfileId } from '@/components/companion/buildProfile';
 import { LocalCompanionOverlay } from '@/components/companion/LocalCompanionOverlay';
 import { useAppConfigStore } from '@/store/appConfigStore';
 import {
@@ -545,7 +546,10 @@ export function OverlayApp() {
       )}
 
       <div style={{ position: 'relative', zIndex: 5, textAlign: 'center' }}>
-        <LocalCompanionOverlay clickThrough={interactiveDisabled} />
+        <LocalCompanionOverlay
+          clickThrough={interactiveDisabled}
+          profileId={getBuildCompanionProfileId()}
+        />
         {interactiveDisabled && quickActions.length > 0 && (
           <div
             data-testid="overlay-interaction-disabled"
