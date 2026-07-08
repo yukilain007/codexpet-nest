@@ -335,9 +335,7 @@ export const XIA_YIZHOU_DIALOGUES: CompanionDialogueLine[] = [
   },
 ];
 
-export const XIA_YIZHOU_REPLIES: CompanionReplySet = repliesFromDialogues(
-  XIA_YIZHOU_DIALOGUES,
-);
+export const XIA_YIZHOU_REPLIES: CompanionReplySet = repliesFromDialogues(XIA_YIZHOU_DIALOGUES);
 
 const SHEN_XINGHUI_DAILY_REPLIES = [
   '……别动，让我再靠一会儿。你的肩膀比枕头舒服。',
@@ -544,7 +542,8 @@ function selectWeightedDialogue(
 ): CompanionDialogueLine | null {
   if (!dialogues?.length) return null;
   const lines = dialogues.filter((line) => line.trigger === category);
-  const fallbackLines = category === 'click' ? [] : dialogues.filter((line) => line.trigger === 'click');
+  const fallbackLines =
+    category === 'click' ? [] : dialogues.filter((line) => line.trigger === 'click');
   const candidates = lines.length ? lines : fallbackLines;
   if (!candidates.length) return null;
 
