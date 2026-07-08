@@ -77,6 +77,8 @@ export function OverlayApp() {
     windowX: number;
     windowY: number;
   } | null>(null);
+  const dragSessionRef = useRef(0);
+  const activeDragSessionRef = useRef<number | null>(null);
   const pendingPositionRef = useRef<OverlayPosition | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastFollowMoveRef = useRef<{ x: number; y: number; at: number } | null>(null);
@@ -287,9 +289,16 @@ export function OverlayApp() {
     animationFrameRef.current = window.requestAnimationFrame(flushPendingPosition);
   };
 
-  const startManualFallbackDrag = (pointerX: number, pointerY: number) => {
+  const beginDragSession = () => {
+    dragSessionRef.current += 1;
+    activeDragSessionRef.current = dragSessionRef.current;
+    return dragSessionRef.current;
+  };
+
+  const startManualFallbackDrag = (pointerX: number, pointerY: number, dragSession: number) => {
     invoke<OverlayPosition>('get_overlay_position')
       .then((position) => {
+        if (activeDragSessionRef.current !== dragSession) return;
         dragStartRef.current = {
           pointerX,
           pointerY,
@@ -299,6 +308,7 @@ export function OverlayApp() {
         updateDragDiagnostics({ dragMode: 'manual-fallback' });
       })
       .catch((error) => {
+        if (activeDragSessionRef.current !== dragSession) return;
         updateDragDiagnostics({
           draggingActive: false,
           lastDragError: `manual drag init failed: ${String(error)}`,
@@ -313,6 +323,7 @@ export function OverlayApp() {
 
     const pointerX = event.screenX;
     const pointerY = event.screenY;
+    const dragSession = beginDragSession();
     const point = `${Math.round(pointerX)}, ${Math.round(pointerY)}`;
     setDragDiagnostics((current) => ({
       ...current,
@@ -326,12 +337,38 @@ export function OverlayApp() {
     getCurrentWebviewWindow()
       .startDragging()
       .catch((error) => {
+        if (activeDragSessionRef.current !== dragSession) {
+          updateDragDiagnostics({
+            dragMode: 'manual-fallback',
+            lastDragError: `native startDragging failed: ${String(error)}`,
+          });
+          return;
+        }
         updateDragDiagnostics({ lastDragError: `native startDragging failed: ${String(error)}` });
-        startManualFallbackDrag(pointerX, pointerY);
+        startManualFallbackDrag(pointerX, pointerY, dragSession);
       });
   };
 
-  const handleDragPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const handlePetDragPointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (interactiveDisabled || event.button !== 0) return;
+    event.preventDefault();
+
+    const pointerX = event.screenX;
+    const pointerY = event.screenY;
+    const dragSession = beginDragSession();
+    const point = `${Math.round(pointerX)}, ${Math.round(pointerY)}`;
+    setDragDiagnostics((current) => ({
+      ...current,
+      mouseDownCount: current.mouseDownCount + 1,
+      lastMousePosition: point,
+      draggingActive: true,
+      dragMode: 'manual-fallback',
+      lastDragError: null,
+    }));
+    startManualFallbackDrag(pointerX, pointerY, dragSession);
+  };
+
+  const handleDragPointerMove = (event: PointerEvent<HTMLElement>) => {
     const start = dragStartRef.current;
     if (!start) return;
     event.preventDefault();
@@ -346,10 +383,15 @@ export function OverlayApp() {
     scheduleOverlayPosition(next);
   };
 
-  const stopManualDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+  const stopManualDrag = (event: PointerEvent<HTMLElement>) => {
+    if (
+      typeof event.currentTarget.hasPointerCapture === 'function' &&
+      event.currentTarget.hasPointerCapture(event.pointerId) &&
+      typeof event.currentTarget.releasePointerCapture === 'function'
+    ) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+    activeDragSessionRef.current = null;
     dragStartRef.current = null;
     updateDragDiagnostics({ draggingActive: false });
     const persisted = persistStandalonePosition(
@@ -495,6 +537,9 @@ export function OverlayApp() {
         <LocalCompanionOverlay
           clickThrough={interactiveDisabled}
           profileId={getBuildCompanionProfileId()}
+          onPetDragStart={handlePetDragPointerDown}
+          onPetDragMove={handleDragPointerMove}
+          onPetDragEnd={stopManualDrag}
         />
         {isDevOverlay && (
           <div style={{ textAlign: 'center', fontSize: 10, opacity: 0.82, marginTop: -4 }}>

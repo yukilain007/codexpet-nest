@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { createDefaultSettings } from '@codexpet/core';
@@ -294,6 +294,71 @@ describe('OverlayApp', () => {
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_overlay_position');
   });
 
+  it('should move the overlay when dragging the local companion body', async () => {
+    useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
+    useRegistryStore.setState({ registry, isLoading: false });
+    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    render(<OverlayApp />);
+
+    const companion = screen.getByRole('button', { name: '和夏以昼互动' });
+    fireEvent(companion, pointerEvent('pointerdown', 120, 140));
+    expect(await screen.findByText('mode: manual-fallback')).toBeInTheDocument();
+
+    fireEvent(companion, pointerEvent('pointermove', 150, 170));
+
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 130,
+        y: 130,
+      });
+    });
+  });
+
+  it('should ignore a stale pet body drag start after the pointer is released', async () => {
+    let resolveOverlayPosition: ((position: { x: number; y: number }) => void) | undefined;
+    vi.mocked(invoke).mockImplementation((command) => {
+      if (command === 'get_overlay_position') {
+        return new Promise((resolve) => {
+          resolveOverlayPosition = resolve;
+        });
+      }
+      if (command === 'get_codex_state') {
+        return Promise.resolve({
+          avatar_overlay_open: true,
+          overlay_bounds: null,
+          state_available: true,
+          diagnostic: 'test',
+          codex_home: '/tmp/.codex',
+        });
+      }
+      if (command === 'set_overlay_click_through') return Promise.resolve(undefined);
+      if (command === 'move_overlay_to_clamped') {
+        return Promise.resolve({ x: 100, y: 100, display_index: 0 });
+      }
+      return Promise.reject(new Error(`Unhandled invoke command: ${String(command)}`));
+    });
+    useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
+    useRegistryStore.setState({ registry, isLoading: false });
+    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    render(<OverlayApp />);
+
+    const companion = screen.getByRole('button', { name: '和夏以昼互动' });
+    fireEvent(companion, pointerEvent('pointerdown', 120, 140));
+    fireEvent(companion, pointerEvent('pointerup', 120, 140));
+    await act(async () => {
+      resolveOverlayPosition?.({ x: 100, y: 100 });
+      await Promise.resolve();
+    });
+
+    fireEvent(screen.getByTestId('overlay-drag-region'), pointerEvent('pointermove', 160, 170));
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+    expect(vi.mocked(invoke)).not.toHaveBeenCalledWith(
+      'move_overlay_to_clamped',
+      expect.anything(),
+    );
+  });
+
   it('should move overlay from Codex mascot bounds in follow mode', async () => {
     useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
     useRegistryStore.setState({ registry, isLoading: false });
@@ -377,3 +442,15 @@ describe('OverlayApp', () => {
     });
   });
 });
+
+function pointerEvent(type: string, screenX: number, screenY: number) {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+    screenX,
+    screenY,
+  });
+  Object.defineProperty(event, 'pointerId', { value: 1 });
+  return event;
+}

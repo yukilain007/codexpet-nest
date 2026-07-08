@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { PointerEvent } from 'react';
 import {
   categoryForInteraction,
   getCompanionProfile,
@@ -14,19 +15,41 @@ const BUBBLE_TIMEOUT_MS = 4_200;
 const CLICK_STREAK_WINDOW_MS = 2_200;
 const IDLE_REPLY_MS = 45_000;
 const SPRITE_SCALE = 0.86;
+const DRAG_THRESHOLD_PX = 6;
+
+type DragVisualState = 'idle' | 'held' | 'left' | 'right';
+
+interface DragGesture {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  lastX: number;
+  lastY: number;
+  dragged: boolean;
+}
 
 export function LocalCompanionOverlay({
   clickThrough,
   profileId,
+  onPetDragStart,
+  onPetDragMove,
+  onPetDragEnd,
 }: {
   clickThrough: boolean;
   profileId?: CompanionProfileId;
+  onPetDragStart?: (event: PointerEvent<HTMLElement>) => void;
+  onPetDragMove?: (event: PointerEvent<HTMLElement>) => void;
+  onPetDragEnd?: (event: PointerEvent<HTMLElement>) => void;
 }) {
   const profile = getCompanionProfile(profileId);
   const [animationState, setAnimationState] = useState<PetAnimationState>('idle');
   const [frame, setFrame] = useState(0);
   const [reply, setReply] = useState<string | null>(null);
+  const [dragVisual, setDragVisual] = useState<DragVisualState>('idle');
   const clickStreakRef = useRef<{ count: number; lastAt: number }>({ count: 0, lastAt: 0 });
+  const animationStateRef = useRef<PetAnimationState>('idle');
+  const dragGestureRef = useRef<DragGesture | null>(null);
+  const suppressNextClickRef = useRef(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -49,18 +72,118 @@ export function LocalCompanionOverlay({
     return () => window.clearInterval(timer);
   }, [clickThrough, profile.id]);
 
+  const setCompanionAnimation = (next: PetAnimationState) => {
+    if (animationStateRef.current === next) return;
+    animationStateRef.current = next;
+    setAnimationState(next);
+    setFrame(0);
+  };
+
+  const setDragVisualState = (next: DragVisualState) => {
+    setDragVisual(next);
+    if (next === 'right') {
+      setCompanionAnimation('running-right');
+      return;
+    }
+    if (next === 'left') {
+      setCompanionAnimation('running-left');
+      return;
+    }
+    if (next === 'held') {
+      setCompanionAnimation('jumping');
+      return;
+    }
+    setCompanionAnimation('idle');
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (clickThrough || event.button !== 0) return;
+    event.preventDefault();
+    if (typeof event.currentTarget.setPointerCapture === 'function') {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    dragGestureRef.current = {
+      pointerId: event.pointerId,
+      startX: event.screenX,
+      startY: event.screenY,
+      lastX: event.screenX,
+      lastY: event.screenY,
+      dragged: false,
+    };
+    suppressNextClickRef.current = false;
+    setDragVisualState('held');
+    onPetDragStart?.(event);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
+    const gesture = dragGestureRef.current;
+    if (!gesture) return;
+    event.preventDefault();
+    const totalDx = event.screenX - gesture.startX;
+    const totalDy = event.screenY - gesture.startY;
+    const deltaX = event.screenX - gesture.lastX;
+    if (!gesture.dragged && Math.hypot(totalDx, totalDy) >= DRAG_THRESHOLD_PX) {
+      gesture.dragged = true;
+      suppressNextClickRef.current = true;
+    }
+    if (gesture.dragged) {
+      if (deltaX > 0) {
+        setDragVisualState('right');
+      } else if (deltaX < 0) {
+        setDragVisualState('left');
+      } else if (totalDx > 0) {
+        setDragVisualState('right');
+      } else if (totalDx < 0) {
+        setDragVisualState('left');
+      }
+    }
+    gesture.lastX = event.screenX;
+    gesture.lastY = event.screenY;
+    onPetDragMove?.(event);
+  };
+
+  const handlePointerEnd = (event: PointerEvent<HTMLElement>) => {
+    const gesture = dragGestureRef.current;
+    if (!gesture) return;
+    if (
+      typeof event.currentTarget.hasPointerCapture === 'function' &&
+      event.currentTarget.hasPointerCapture(gesture.pointerId) &&
+      typeof event.currentTarget.releasePointerCapture === 'function'
+    ) {
+      event.currentTarget.releasePointerCapture(gesture.pointerId);
+    }
+    dragGestureRef.current = null;
+    if (gesture.dragged) suppressNextClickRef.current = true;
+    setDragVisualState('idle');
+    onPetDragEnd?.(event);
+  };
+
   const handleClick = () => {
     if (clickThrough) return;
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
     const nowMs = Date.now();
     const previous = clickStreakRef.current;
     const count = nowMs - previous.lastAt <= CLICK_STREAK_WINDOW_MS ? previous.count + 1 : 1;
     clickStreakRef.current = { count, lastAt: nowMs };
     const category = categoryForInteraction({ now: new Date(nowMs), clickCount: count });
     setReply(selectCompanionReply(category, nowMs, profile.id).text);
-    setAnimationState('waving');
-    setFrame(0);
-    window.setTimeout(() => setAnimationState('idle'), 900);
+    setCompanionAnimation('waving');
+    window.setTimeout(() => {
+      if (!dragGestureRef.current) setCompanionAnimation('idle');
+    }, 900);
   };
+
+  const dragTransform =
+    dragVisual === 'right'
+      ? 'translateY(-14px) rotate(5deg)'
+      : dragVisual === 'left'
+        ? 'translateY(-14px) rotate(-5deg)'
+        : dragVisual === 'held'
+          ? 'translateY(-18px) rotate(2deg)'
+          : 'translateY(0) rotate(0deg)';
 
   return (
     <div
@@ -82,12 +205,20 @@ export function LocalCompanionOverlay({
       <button
         type="button"
         aria-label={profile.interactionLabel}
+        data-drag-visual={dragVisual}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
         onClick={handleClick}
         style={{
           border: 0,
           padding: 0,
           background: 'transparent',
-          cursor: clickThrough ? 'default' : 'pointer',
+          cursor: clickThrough ? 'default' : dragVisual === 'idle' ? 'grab' : 'grabbing',
+          transform: dragTransform,
+          transition: dragVisual === 'idle' ? 'transform 140ms ease-out' : 'transform 80ms linear',
+          touchAction: 'none',
         }}
       >
         <PetSprite

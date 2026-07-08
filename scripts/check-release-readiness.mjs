@@ -50,6 +50,12 @@ const windowsBuildWorkflow = windowsBuildWorkflowExists ? readText(windowsBuildW
 const variantBuildScriptPath = 'scripts/build-tauri-variants.mjs';
 const variantBuildScriptExists = existsSync(join(root, variantBuildScriptPath));
 const variantBuildScript = variantBuildScriptExists ? readText(variantBuildScriptPath) : '';
+const localCompanionSource = readText(
+  'apps/desktop-tauri/src/components/companion/LocalCompanionOverlay.tsx',
+);
+const companionAnimationSource = readText(
+  'apps/desktop-tauri/src/components/companion/animation.ts',
+);
 
 check('product name', tauriConfig.productName === 'CodexPet Nest', tauriConfig.productName);
 check('bundle identifier', tauriConfig.identifier === 'xyz.codexpet.nest', tauriConfig.identifier);
@@ -144,6 +150,27 @@ check(
     !overlaySource.includes('>Drag<') &&
     !overlaySource.includes('execute_quick_action'),
   'OverlayApp.tsx',
+);
+check(
+  'pet body drag moves overlay',
+  overlaySource.includes('onPetDragStart={handlePetDragPointerDown}') &&
+    overlaySource.includes('onPetDragMove={handleDragPointerMove}') &&
+    overlaySource.includes('onPetDragEnd={stopManualDrag}'),
+  'OverlayApp.tsx',
+);
+check(
+  'pet body drag suppresses accidental click dialogue',
+  localCompanionSource.includes('suppressNextClickRef') &&
+    localCompanionSource.includes('data-drag-visual') &&
+    localCompanionSource.includes("setCompanionAnimation('jumping')"),
+  'LocalCompanionOverlay.tsx',
+);
+check(
+  'pet drag direction animations configured',
+  companionAnimationSource.includes("'running-right': { row: 1, frames: 8 }") &&
+    companionAnimationSource.includes("'running-left': { row: 2, frames: 8 }") &&
+    companionAnimationSource.includes('jumping: { row: 4, frames: 4 }'),
+  'animation.ts',
 );
 check(
   'production missing asset feedback is gentle',

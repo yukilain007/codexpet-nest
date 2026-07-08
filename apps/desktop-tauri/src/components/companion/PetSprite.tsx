@@ -25,6 +25,7 @@ export function PetSprite({
   return (
     <div
       data-testid="local-companion-pet"
+      data-animation-state={state}
       style={{
         width,
         height,
