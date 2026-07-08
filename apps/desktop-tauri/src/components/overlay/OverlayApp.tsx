@@ -3,12 +3,7 @@ import type { PointerEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { builtInNestFixtures } from '@codexpet/renderer/fixtures/nests';
-import {
-  getOverlayRuntimeDecision,
-  persistStandalonePosition,
-  validateWidgetActionConfig,
-} from '@codexpet/core';
-import type { ActionPlatform, QuickActionSettings } from '@codexpet/core';
+import { getOverlayRuntimeDecision, persistStandalonePosition } from '@codexpet/core';
 import { getBuildCompanionProfileId } from '@/components/companion/buildProfile';
 import { LocalCompanionOverlay } from '@/components/companion/LocalCompanionOverlay';
 import { useAppConfigStore } from '@/store/appConfigStore';
@@ -49,12 +44,6 @@ interface ImportedNestPackage {
   missingAssets: string[];
 }
 
-interface QuickActionResult {
-  id: string;
-  status: string;
-  message: string;
-}
-
 const initialDragDiagnostics: DragDiagnostics = {
   mouseDownCount: 0,
   lastMousePosition: 'none',
@@ -81,8 +70,6 @@ export function OverlayApp() {
   const overlayMode = settings.overlayMode;
   const [runtimeStatus, setRuntimeStatus] = useState('Checking Codex position...');
   const [assetIssue, setAssetIssue] = useState<string | null>(null);
-  const [confirmingActionId, setConfirmingActionId] = useState<string | null>(null);
-  const [actionResult, setActionResult] = useState<string | null>(null);
   const [dragDiagnostics, setDragDiagnostics] = useState<DragDiagnostics>(initialDragDiagnostics);
   const dragStartRef = useRef<{
     pointerX: number;
@@ -93,15 +80,6 @@ export function OverlayApp() {
   const pendingPositionRef = useRef<OverlayPosition | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastFollowMoveRef = useRef<{ x: number; y: number; at: number } | null>(null);
-  const actionPlatform = toActionPlatform(config.platform);
-  const widgetActionConfig = validateWidgetActionConfig(
-    settings.widgets,
-    settings.quickActions,
-    actionPlatform,
-  );
-  const quickActions = widgetActionConfig.quickActions.filter(
-    (action) => action.enabled && action.kind !== 'shell-placeholder',
-  );
 
   useEffect(() => {
     writeDragDiagnostics(dragDiagnostics);
@@ -287,7 +265,7 @@ export function OverlayApp() {
   }
 
   const isDevOverlay = config.isDebug === true;
-  const showProductionFeedback = actionResult || nestFallback || assetIssue;
+  const showProductionFeedback = nestFallback || assetIssue;
   const interactiveDisabled = settings.clickThrough;
 
   const updateDragDiagnostics = (patch: Partial<DragDiagnostics>) => {
@@ -387,30 +365,6 @@ export function OverlayApp() {
     }
   };
 
-  const executeAction = async (action: QuickActionSettings) => {
-    if (action.requireConfirm && confirmingActionId !== action.id) {
-      setConfirmingActionId(action.id);
-      setActionResult(`Confirm ${action.name} to run`);
-      return;
-    }
-    setConfirmingActionId(null);
-    setActionResult(`Running ${action.name}...`);
-    try {
-      const result = await invoke<QuickActionResult>('execute_quick_action', {
-        action: {
-          id: action.id,
-          type: action.kind,
-          target: action.target,
-          platform: action.platform ?? 'all',
-          enabled: action.enabled,
-        },
-      });
-      setActionResult(result.message);
-    } catch (error) {
-      setActionResult(`Action failed: ${String(error)}`);
-    }
-  };
-
   return (
     <div
       data-testid="overlay-root"
@@ -476,22 +430,14 @@ export function OverlayApp() {
           right: isDevOverlay ? 178 : 112,
           height: 20,
           zIndex: 25,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 999,
-          border: '1px solid rgba(255,255,255,0.22)',
-          background: 'rgba(15,23,42,0.22)',
-          color: 'rgba(255,255,255,0.62)',
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: 0.4,
+          border: 0,
+          background: 'transparent',
+          color: 'transparent',
+          fontSize: 0,
           cursor: interactiveDisabled ? 'default' : 'move',
           pointerEvents: interactiveDisabled ? 'none' : 'auto',
         }}
-      >
-        {interactiveDisabled ? 'Click-through on' : 'Drag'}
-      </div>
+      />
 
       {isDevOverlay && (
         <div
@@ -550,51 +496,6 @@ export function OverlayApp() {
           clickThrough={interactiveDisabled}
           profileId={getBuildCompanionProfileId()}
         />
-        {interactiveDisabled && quickActions.length > 0 && (
-          <div
-            data-testid="overlay-interaction-disabled"
-            style={{
-              display: 'inline-flex',
-              marginTop: -2,
-              padding: '3px 8px',
-              borderRadius: 999,
-              background: 'rgba(15,23,42,0.42)',
-              color: 'rgba(255,255,255,0.72)',
-              fontSize: 10,
-              fontWeight: 800,
-            }}
-          >
-            Click-through is on
-          </div>
-        )}
-        {!interactiveDisabled && quickActions.length > 0 && (
-          <div
-            data-testid="quick-actions"
-            style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: -2 }}
-          >
-            {quickActions.slice(0, 3).map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                onClick={() => void executeAction(action)}
-                disabled={interactiveDisabled}
-                style={{
-                  border: '1px solid rgba(255,255,255,0.45)',
-                  borderRadius: 999,
-                  background: confirmingActionId === action.id ? '#facc15' : 'rgba(0,0,0,0.45)',
-                  color: confirmingActionId === action.id ? '#111827' : '#ffffff',
-                  padding: '3px 8px',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  cursor: interactiveDisabled ? 'not-allowed' : 'pointer',
-                  opacity: interactiveDisabled ? 0.54 : 1,
-                }}
-              >
-                {confirmingActionId === action.id ? `Confirm ${action.name}` : action.name}
-              </button>
-            ))}
-          </div>
-        )}
         {isDevOverlay && (
           <div style={{ textAlign: 'center', fontSize: 10, opacity: 0.82, marginTop: -4 }}>
             {config.appName || 'CodexPet'} v{config.version} · mode: {overlayMode}
@@ -618,16 +519,7 @@ export function OverlayApp() {
             data-testid="overlay-user-feedback"
             style={{ textAlign: 'center', fontSize: 9, opacity: 0.78 }}
           >
-            {actionResult ??
-              (nestFallback ? 'Using default nest.' : 'Some local nest assets are unavailable.')}
-          </div>
-        )}
-        {isDevOverlay && actionResult && (
-          <div
-            data-testid="action-result"
-            style={{ textAlign: 'center', fontSize: 9, opacity: 0.88 }}
-          >
-            Action: {actionResult}
+            {nestFallback ? 'Using default nest.' : 'Some local nest assets are unavailable.'}
           </div>
         )}
         {isDevOverlay && (
@@ -658,11 +550,6 @@ function writeDragDiagnostics(diagnostics: DragDiagnostics) {
 
 function writeFollowDiagnostics(diagnostics: OverlayFollowDiagnostics) {
   window.localStorage.setItem(FOLLOW_DIAGNOSTICS_KEY, JSON.stringify(diagnostics));
-}
-
-function toActionPlatform(platform: string): ActionPlatform {
-  if (platform === 'macos' || platform === 'windows' || platform === 'linux') return platform;
-  return 'all';
 }
 
 function isBuiltInEntry(assetRoot: string): boolean {

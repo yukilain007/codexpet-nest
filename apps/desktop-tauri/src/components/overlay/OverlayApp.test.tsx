@@ -49,7 +49,10 @@ describe('OverlayApp', () => {
     render(<OverlayApp />);
     expect(screen.getByTestId('local-companion-pet')).toBeInTheDocument();
     expect(screen.queryByTestId('nest-render-model')).not.toBeInTheDocument();
-    expect(screen.getByTestId('quick-actions')).toBeInTheDocument();
+    expect(screen.queryByTestId('quick-actions')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Docs' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Codex Path' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Drag')).not.toBeInTheDocument();
     expect(screen.queryByTestId('debug-overlay-label')).not.toBeInTheDocument();
     expect(screen.queryByTestId('debug-platform-label')).not.toBeInTheDocument();
     expect(screen.queryByTestId('overlay-drag-diagnostics')).not.toBeInTheDocument();
@@ -58,40 +61,32 @@ describe('OverlayApp', () => {
     expect(screen.queryByText(/mode:/)).not.toBeInTheDocument();
   });
 
-  it('should execute quick action and show result', async () => {
+  it('should not render or execute quick actions from the pet overlay', async () => {
     useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
     useRegistryStore.setState({ registry, isLoading: false });
     useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
     render(<OverlayApp />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Docs' }));
-
-    expect(await screen.findByText(/Action: Action completed in test/)).toBeInTheDocument();
-    expect(vi.mocked(invoke)).toHaveBeenCalledWith(
-      'execute_quick_action',
-      expect.objectContaining({
-        action: expect.objectContaining({ id: 'open-codexpet-docs', type: 'url' }),
-      }),
-    );
+    expect(screen.queryByTestId('quick-actions')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Docs' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Codex Path' })).not.toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
+    expect(vi.mocked(invoke)).not.toHaveBeenCalledWith('execute_quick_action', expect.anything());
   });
 
-  it('should require confirmation before running confirm actions', async () => {
+  it('should not render click-through quick-action status when interaction is disabled', async () => {
     useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
     useRegistryStore.setState({ registry, isLoading: false });
-    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), clickThrough: true },
+      isLoading: false,
+    });
     render(<OverlayApp />);
-    expect(await screen.findByText(/Waiting for Codex pet position/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Codex Path' }));
-
-    expect(screen.getByText(/Action: Confirm Open Codex Path to run/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Confirm Open Codex Path' })).toBeInTheDocument();
-    expect(vi.mocked(invoke)).not.toHaveBeenCalledWith(
-      'execute_quick_action',
-      expect.objectContaining({
-        action: expect.objectContaining({ id: 'open-codex-path' }),
-      }),
-    );
+    expect(screen.queryByTestId('quick-actions')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('overlay-interaction-disabled')).not.toBeInTheDocument();
+    expect(screen.queryByText('Click-through on')).not.toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
   });
 
   it('should render debug overlay elements when isDebug is true', async () => {
@@ -109,7 +104,7 @@ describe('OverlayApp', () => {
     expect(screen.getByTestId('debug-overlay-label')).toHaveTextContent('DEBUG OVERLAY');
     expect(screen.getByTestId('debug-platform-label')).toBeInTheDocument();
     expect(screen.getByTestId('overlay-drag-region')).toHaveAttribute('data-tauri-drag-region');
-    expect(screen.getByText('Drag')).toBeInTheDocument();
+    expect(screen.queryByText('Drag')).not.toBeInTheDocument();
     expect(await screen.findByText(/Waiting for Codex pet position/)).toBeInTheDocument();
   });
 
@@ -128,7 +123,7 @@ describe('OverlayApp', () => {
     await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
   });
 
-  it('should show click-through status instead of clickable actions when interaction is disabled', async () => {
+  it('should keep quick actions hidden when interaction is disabled', async () => {
     useAppConfigStore.getState().setConfig({ ...FALLBACK_CONFIG, isDebug: false });
     useRegistryStore.setState({ registry, isLoading: false });
     useSettingsStore.setState({
@@ -138,11 +133,9 @@ describe('OverlayApp', () => {
 
     render(<OverlayApp />);
 
-    expect(screen.getByTestId('overlay-interaction-disabled')).toHaveTextContent(
-      'Click-through is on',
-    );
+    expect(screen.queryByTestId('overlay-interaction-disabled')).not.toBeInTheDocument();
     expect(screen.queryByTestId('quick-actions')).not.toBeInTheDocument();
-    expect(screen.getByText('Click-through on')).toBeInTheDocument();
+    expect(screen.queryByText('Click-through on')).not.toBeInTheDocument();
     await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
   });
 

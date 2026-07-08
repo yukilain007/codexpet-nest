@@ -137,9 +137,12 @@ check(
   'OverlayApp.tsx',
 );
 check(
-  'click-through hides quick actions',
-  overlaySource.includes('overlay-interaction-disabled') &&
-    overlaySource.includes('Click-through is on'),
+  'pet overlay hides quick actions and visible drag controls',
+  !overlaySource.includes('data-testid="quick-actions"') &&
+    !overlaySource.includes('overlay-interaction-disabled') &&
+    !overlaySource.includes('Click-through is on') &&
+    !overlaySource.includes('>Drag<') &&
+    !overlaySource.includes('execute_quick_action'),
   'OverlayApp.tsx',
 );
 check(
