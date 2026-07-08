@@ -1,4 +1,13 @@
 {
   "productName": "CodexPet Nest Xia Yizhou",
-  "identifier": "xyz.codexpet.nest.xiayizhou"
+  "identifier": "xyz.codexpet.nest.xiayizhou",
+  "bundle": {
+    "icon": [
+      "icons/xia-yizhou/32x32.png",
+      "icons/xia-yizhou/128x128.png",
+      "icons/xia-yizhou/128x128@2x.png",
+      "icons/xia-yizhou/icon.icns",
+      "icons/xia-yizhou/icon.ico"
+    ]
+  }
 }

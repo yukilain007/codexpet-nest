@@ -30,6 +30,14 @@ function readText(path) {
   return readFileSync(join(root, path), 'utf8');
 }
 
+function iconSetExists(icons) {
+  return (
+    Array.isArray(icons) &&
+    icons.length === 5 &&
+    icons.every((icon) => existsSync(join(root, 'apps/desktop-tauri/src-tauri', icon)))
+  );
+}
+
 const tauriConfig = readJson('apps/desktop-tauri/src-tauri/tauri.conf.json');
 const xiaYizhouTauriConfig = readJson('apps/desktop-tauri/src-tauri/tauri.xia-yizhou.conf.json');
 const shenXinghuiTauriConfig = readJson(
@@ -112,6 +120,25 @@ for (const icon of tauriConfig.bundle?.icon ?? []) {
     icon,
   );
 }
+
+check(
+  'Xia Yizhou uses distinct role icon set',
+  iconSetExists(xiaYizhouTauriConfig.bundle?.icon) &&
+    xiaYizhouTauriConfig.bundle.icon.every((icon) => icon.startsWith('icons/xia-yizhou/')),
+  JSON.stringify(xiaYizhouTauriConfig.bundle?.icon),
+);
+check(
+  'Shen Xinghui uses distinct role icon set',
+  iconSetExists(shenXinghuiTauriConfig.bundle?.icon) &&
+    shenXinghuiTauriConfig.bundle.icon.every((icon) => icon.startsWith('icons/shen-xinghui/')),
+  JSON.stringify(shenXinghuiTauriConfig.bundle?.icon),
+);
+check(
+  'role icon sets are not shared',
+  JSON.stringify(xiaYizhouTauriConfig.bundle?.icon) !==
+    JSON.stringify(shenXinghuiTauriConfig.bundle?.icon),
+  'variant icon paths',
+);
 
 check(
   'tray embeds menu-bar icon',

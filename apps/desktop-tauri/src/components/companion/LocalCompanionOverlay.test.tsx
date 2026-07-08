@@ -15,7 +15,7 @@ describe('LocalCompanionOverlay', () => {
       minHeight: '236px',
     });
     expect(screen.getByRole('button', { name: '和夏以昼互动' })).toBeInTheDocument();
-    expect(screen.getByTestId('local-companion-pet')).toHaveStyle({
+    expect(screen.getByTestId('local-companion-sprite-frame')).toHaveStyle({
       backgroundImage: 'url(/pets/xia-yizhou/spritesheet.webp)',
     });
   });
@@ -24,7 +24,7 @@ describe('LocalCompanionOverlay', () => {
     render(<LocalCompanionOverlay clickThrough={false} profileId="xia-yizhou" />);
 
     expect(screen.getByRole('button', { name: '和夏以昼互动' })).toBeInTheDocument();
-    expect(screen.getByTestId('local-companion-pet')).toHaveStyle({
+    expect(screen.getByTestId('local-companion-sprite-frame')).toHaveStyle({
       backgroundImage: 'url(/pets/xia-yizhou/spritesheet.webp)',
     });
   });

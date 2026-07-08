@@ -1,4 +1,13 @@
 {
   "productName": "CodexPet Nest Shen Xinghui",
-  "identifier": "xyz.codexpet.nest.shenxinghui"
+  "identifier": "xyz.codexpet.nest.shenxinghui",
+  "bundle": {
+    "icon": [
+      "icons/shen-xinghui/32x32.png",
+      "icons/shen-xinghui/128x128.png",
+      "icons/shen-xinghui/128x128@2x.png",
+      "icons/shen-xinghui/icon.icns",
+      "icons/shen-xinghui/icon.ico"
+    ]
+  }
 }
