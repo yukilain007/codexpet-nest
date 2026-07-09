@@ -32,8 +32,9 @@ describe('SettingsApp', () => {
     render(<SettingsApp />);
     expect(screen.getByRole('heading', { name: /Settings/i })).toBeInTheDocument();
     expect(screen.getByText(/Version: 0.1.12/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Overlay mode')).toHaveValue('follow-codex');
-    expect(screen.getAllByText('Follow Codex').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Overlay mode')).toHaveValue('standalone-fixed');
+    expect(screen.getAllByText('Standalone fixed/manual').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Companion size')).toHaveValue('0.875');
     expect(screen.getByLabelText('Active nest')).toHaveValue('default');
     expect(screen.getByRole('heading', { name: 'Local Packages / Nests' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Follow Status' })).toBeInTheDocument();
@@ -76,6 +77,26 @@ describe('SettingsApp', () => {
         'save_local_settings',
         expect.objectContaining({
           settings: expect.objectContaining({ activeNestId: 'basket-pomodoro-nest' }),
+        }),
+      );
+    });
+  });
+
+  it('should save companion size from the overlay settings slider', async () => {
+    useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
+    useRegistryStore.setState({ registry, isLoading: false });
+    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    render(<SettingsApp />);
+
+    fireEvent.change(screen.getByLabelText('Companion size'), {
+      target: { value: '1' },
+    });
+
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith(
+        'save_local_settings',
+        expect.objectContaining({
+          settings: expect.objectContaining({ companionScale: 1 }),
         }),
       );
     });
@@ -270,7 +291,7 @@ describe('SettingsApp', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(/Exported local snapshot/);
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('export_local_snapshot', {
       exportPath: '/tmp/codexpet-nest-snapshot.json',
-      settings: expect.objectContaining({ schemaVersion: 3 }),
+      settings: expect.objectContaining({ schemaVersion: 4 }),
       registry: expect.objectContaining({ schemaVersion: 1 }),
     });
   });

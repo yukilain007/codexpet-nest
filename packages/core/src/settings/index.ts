@@ -1,4 +1,7 @@
-export const CURRENT_SETTINGS_SCHEMA_VERSION = 3;
+export const CURRENT_SETTINGS_SCHEMA_VERSION = 4;
+export const MIN_COMPANION_SCALE = 0.625;
+export const MAX_COMPANION_SCALE = 1.125;
+export const DEFAULT_COMPANION_SCALE = 0.875;
 
 export type OverlayMode = 'follow-codex' | 'standalone-fixed' | 'standalone-roam';
 
@@ -133,6 +136,7 @@ export interface CodexPetSettings {
   activeNestId: string | null;
   overlayMode: OverlayMode;
   standalonePosition: StandalonePosition;
+  companionScale: number;
   alwaysOnTop: boolean;
   clickThrough: boolean;
   widgetConfigs: Record<string, unknown>;
@@ -157,8 +161,9 @@ export function createDefaultSettings(): CodexPetSettings {
   return {
     schemaVersion: CURRENT_SETTINGS_SCHEMA_VERSION,
     activeNestId: null,
-    overlayMode: 'follow-codex',
+    overlayMode: 'standalone-fixed',
     standalonePosition: { x: 100, y: 100 },
+    companionScale: DEFAULT_COMPANION_SCALE,
     alwaysOnTop: true,
     clickThrough: false,
     widgetConfigs: {},
@@ -240,6 +245,13 @@ function migrateSettings(value: Record<string, unknown>, version: number): Codex
         : BUILT_IN_QUICK_ACTIONS,
     };
   }
+  if (version === 3) {
+    next = {
+      ...next,
+      schemaVersion: 4,
+      companionScale: coerceCompanionScale(value.companionScale),
+    };
+  }
   return normalizeCurrent(next);
 }
 
@@ -252,8 +264,9 @@ function normalizeCurrent(value: Record<string, unknown>): CodexPetSettings {
 function coercePartialSettings(value: Record<string, unknown>): Partial<CodexPetSettings> {
   return {
     activeNestId: typeof value.activeNestId === 'string' ? value.activeNestId : null,
-    overlayMode: isOverlayMode(value.overlayMode) ? value.overlayMode : 'follow-codex',
+    overlayMode: isOverlayMode(value.overlayMode) ? value.overlayMode : 'standalone-fixed',
     standalonePosition: coercePosition(value.standalonePosition),
+    companionScale: coerceCompanionScale(value.companionScale),
     alwaysOnTop: typeof value.alwaysOnTop === 'boolean' ? value.alwaysOnTop : true,
     clickThrough: typeof value.clickThrough === 'boolean' ? value.clickThrough : false,
     widgetConfigs: isRecord(value.widgetConfigs) ? value.widgetConfigs : {},
@@ -278,6 +291,12 @@ function coercePosition(value: unknown): StandalonePosition {
     y: value.y,
     displayId: typeof value.displayId === 'string' ? value.displayId : undefined,
   };
+}
+
+function coerceCompanionScale(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_COMPANION_SCALE;
+  const clamped = Math.min(MAX_COMPANION_SCALE, Math.max(MIN_COMPANION_SCALE, value));
+  return Math.round(clamped * 16) / 16;
 }
 
 function coerceSync(value: Record<string, unknown>): SyncSettingsMetadata {

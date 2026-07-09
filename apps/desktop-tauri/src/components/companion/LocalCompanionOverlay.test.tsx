@@ -12,7 +12,7 @@ describe('LocalCompanionOverlay', () => {
 
     expect(screen.getByTestId('local-companion-root')).toHaveStyle({
       width: '320px',
-      minHeight: '236px',
+      height: '278px',
     });
     expect(screen.getByRole('button', { name: '和夏以昼互动' })).toBeInTheDocument();
     expect(screen.getByTestId('local-companion-sprite-frame')).toHaveStyle({
@@ -39,6 +39,30 @@ describe('LocalCompanionOverlay', () => {
     expect(screen.getByTestId('local-companion-bubble')).toHaveTextContent(
       /戳我|点这么准|再点一下|手指不酸|确认我在/,
     );
+    expect(screen.getByTestId('local-companion-bubble-anchor')).toHaveStyle({
+      left: '50%',
+      bottom: '190px',
+      transform: 'translateX(-50%)',
+    });
+  });
+
+  it('scales the pet while keeping the bubble attached above the sprite', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 1, 15, 30));
+    render(<LocalCompanionOverlay clickThrough={false} scale={1} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '和夏以昼互动' }));
+
+    expect(screen.getByTestId('local-companion-root')).toHaveStyle({
+      width: '320px',
+      height: '304px',
+    });
+    expect(screen.getByTestId('local-companion-sprite-frame')).toHaveStyle({
+      transform: 'translateX(-50%) scale(1)',
+    });
+    expect(screen.getByTestId('local-companion-bubble-anchor')).toHaveStyle({
+      bottom: '216px',
+    });
   });
 
   it('does not handle clicks when click-through is enabled', () => {

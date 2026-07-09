@@ -2,11 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import {
   categoryForInteraction,
+  DEFAULT_COMPANION_SCALE,
   getCompanionProfile,
   selectCompanionReply,
   type CompanionProfileId,
 } from '@codexpet/core';
-import { getAnimationFrameCount, type PetAnimationState } from './animation';
+import {
+  CELL_HEIGHT,
+  CELL_WIDTH,
+  getAnimationFrameCount,
+  type PetAnimationState,
+} from './animation';
 import { PetSprite } from './PetSprite';
 import { SpeechBubble } from './SpeechBubble';
 
@@ -14,8 +20,11 @@ const FRAME_INTERVAL_MS = 180;
 const BUBBLE_TIMEOUT_MS = 4_200;
 const CLICK_STREAK_WINDOW_MS = 2_200;
 const IDLE_REPLY_MS = 45_000;
-const SPRITE_SCALE = 0.86;
 const DRAG_THRESHOLD_PX = 6;
+const ROOT_WIDTH_PX = 320;
+const BUBBLE_RESERVED_HEIGHT_PX = 72;
+const BUBBLE_GAP_PX = 8;
+const DRAG_LIFT_SPACE_PX = 16;
 
 type DragVisualState = 'idle' | 'held' | 'left' | 'right';
 
@@ -34,14 +43,21 @@ export function LocalCompanionOverlay({
   onPetDragStart,
   onPetDragMove,
   onPetDragEnd,
+  scale = DEFAULT_COMPANION_SCALE,
 }: {
   clickThrough: boolean;
   profileId?: CompanionProfileId;
+  scale?: number;
   onPetDragStart?: (event: PointerEvent<HTMLElement>) => void;
   onPetDragMove?: (event: PointerEvent<HTMLElement>) => void;
   onPetDragEnd?: (event: PointerEvent<HTMLElement>) => void;
 }) {
   const profile = getCompanionProfile(profileId);
+  const layoutScale = getPixelStableLayoutScale(scale);
+  const petWidth = Math.round(CELL_WIDTH * layoutScale);
+  const petHeight = Math.round(CELL_HEIGHT * layoutScale);
+  const rootHeight = petHeight + BUBBLE_RESERVED_HEIGHT_PX + BUBBLE_GAP_PX + DRAG_LIFT_SPACE_PX;
+  const bubbleBottom = petHeight + BUBBLE_GAP_PX;
   const [animationState, setAnimationState] = useState<PetAnimationState>('idle');
   const [frame, setFrame] = useState(0);
   const [reply, setReply] = useState<string | null>(null);
@@ -190,44 +206,67 @@ export function LocalCompanionOverlay({
       data-testid="local-companion-root"
       style={{
         position: 'relative',
-        width: 320,
-        minHeight: 236,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        flexDirection: 'column',
+        width: ROOT_WIDTH_PX,
+        height: rootHeight,
         pointerEvents: clickThrough ? 'none' : 'auto',
       }}
     >
-      <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 2 }}>
-        {reply && <SpeechBubble text={reply} />}
-      </div>
-      <button
-        type="button"
-        aria-label={profile.interactionLabel}
-        data-drag-visual={dragVisual}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
-        onClick={handleClick}
+      <div
+        data-testid="local-companion-bubble-anchor"
         style={{
-          border: 0,
-          padding: 0,
-          background: 'transparent',
-          cursor: clickThrough ? 'default' : dragVisual === 'idle' ? 'grab' : 'grabbing',
-          transform: dragTransform,
-          transition: dragVisual === 'idle' ? 'transform 140ms ease-out' : 'transform 80ms linear',
-          touchAction: 'none',
+          position: 'absolute',
+          left: '50%',
+          bottom: bubbleBottom,
+          zIndex: 2,
+          transform: 'translateX(-50%)',
+          pointerEvents: 'none',
         }}
       >
-        <PetSprite
-          state={animationState}
-          frame={frame}
-          spritesheetUrl={profile.spritesheetUrl}
-          scale={SPRITE_SCALE}
-        />
-      </button>
+        {reply && <SpeechBubble text={reply} />}
+      </div>
+      <div
+        data-testid="local-companion-pet-anchor"
+        style={{
+          position: 'absolute',
+          left: '50%',
+          bottom: 0,
+          width: petWidth,
+          height: petHeight,
+          transform: 'translateX(-50%)',
+        }}
+      >
+        <button
+          type="button"
+          aria-label={profile.interactionLabel}
+          data-drag-visual={dragVisual}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerEnd}
+          onPointerCancel={handlePointerEnd}
+          onClick={handleClick}
+          style={{
+            border: 0,
+            padding: 0,
+            background: 'transparent',
+            cursor: clickThrough ? 'default' : dragVisual === 'idle' ? 'grab' : 'grabbing',
+            transform: dragTransform,
+            transition:
+              dragVisual === 'idle' ? 'transform 140ms ease-out' : 'transform 80ms linear',
+            touchAction: 'none',
+          }}
+        >
+          <PetSprite
+            state={animationState}
+            frame={frame}
+            spritesheetUrl={profile.spritesheetUrl}
+            scale={scale}
+          />
+        </button>
+      </div>
     </div>
   );
+}
+
+function getPixelStableLayoutScale(scale: number): number {
+  return Math.max(1 / 16, Math.round(scale * 16) / 16);
 }

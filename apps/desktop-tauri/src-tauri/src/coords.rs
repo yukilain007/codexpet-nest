@@ -31,6 +31,8 @@ pub struct ClampedPosition {
     pub display_index: usize,
 }
 
+const EDGE_SNAP_DISTANCE_PX: i32 = 28;
+
 /// Convert Codex overlay bounds (top-left coordinates in Codex space)
 /// to Tauri window logical coordinates for the nest overlay.
 ///
@@ -95,11 +97,23 @@ pub fn clamp_position_to_screens(
     let (display_index, screen) = find_screen_for_physical_position(x, y, screens);
     let max_x = screen.x + screen.width - window_width.max(1);
     let max_y = screen.y + screen.height - window_height.max(1);
+    let clamped_x = x.clamp(screen.x, max_x.max(screen.x));
+    let clamped_y = y.clamp(screen.y, max_y.max(screen.y));
     ClampedPosition {
-        x: x.clamp(screen.x, max_x.max(screen.x)),
-        y: y.clamp(screen.y, max_y.max(screen.y)),
+        x: snap_to_edge(clamped_x, screen.x, max_x.max(screen.x)),
+        y: snap_to_edge(clamped_y, screen.y, max_y.max(screen.y)),
         display_index,
     }
+}
+
+fn snap_to_edge(value: i32, min: i32, max: i32) -> i32 {
+    if (value - min).abs() <= EDGE_SNAP_DISTANCE_PX {
+        return min;
+    }
+    if (max - value).abs() <= EDGE_SNAP_DISTANCE_PX {
+        return max;
+    }
+    value
 }
 
 /// Find which screen contains the given (x, y) position.
@@ -367,5 +381,20 @@ mod tests {
         assert_eq!(result.display_index, 0);
         assert_eq!(result.x, 1440);
         assert_eq!(result.y, 820);
+    }
+
+    #[test]
+    fn test_clamp_position_snaps_near_screen_edges() {
+        let screens = make_screens();
+
+        let near_left = clamp_position_to_screens(24, 80, 360, 280, &screens);
+        let near_right = clamp_position_to_screens(1538, 80, 360, 280, &screens);
+        let near_top = clamp_position_to_screens(200, 18, 360, 280, &screens);
+        let near_bottom = clamp_position_to_screens(200, 778, 360, 280, &screens);
+
+        assert_eq!(near_left.x, 0);
+        assert_eq!(near_right.x, 1560);
+        assert_eq!(near_top.y, 0);
+        assert_eq!(near_bottom.y, 800);
     }
 }

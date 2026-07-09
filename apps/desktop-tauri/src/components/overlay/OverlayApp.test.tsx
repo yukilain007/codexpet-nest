@@ -56,7 +56,12 @@ describe('OverlayApp', () => {
     expect(screen.queryByTestId('debug-overlay-label')).not.toBeInTheDocument();
     expect(screen.queryByTestId('debug-platform-label')).not.toBeInTheDocument();
     expect(screen.queryByTestId('overlay-drag-diagnostics')).not.toBeInTheDocument();
-    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
+    await waitFor(() =>
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 100,
+        y: 100,
+      }),
+    );
     expect(screen.queryByText(/Runtime:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/mode:/)).not.toBeInTheDocument();
   });
@@ -70,7 +75,12 @@ describe('OverlayApp', () => {
     expect(screen.queryByTestId('quick-actions')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open Docs' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open Codex Path' })).not.toBeInTheDocument();
-    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
+    await waitFor(() =>
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 100,
+        y: 100,
+      }),
+    );
     expect(vi.mocked(invoke)).not.toHaveBeenCalledWith('execute_quick_action', expect.anything());
   });
 
@@ -86,7 +96,12 @@ describe('OverlayApp', () => {
     expect(screen.queryByTestId('quick-actions')).not.toBeInTheDocument();
     expect(screen.queryByTestId('overlay-interaction-disabled')).not.toBeInTheDocument();
     expect(screen.queryByText('Click-through on')).not.toBeInTheDocument();
-    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
+    await waitFor(() =>
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 100,
+        y: 100,
+      }),
+    );
   });
 
   it('should render debug overlay elements when isDebug is true', async () => {
@@ -95,7 +110,10 @@ describe('OverlayApp', () => {
       isDebug: true,
     });
     useRegistryStore.setState({ registry, isLoading: false });
-    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), overlayMode: 'follow-codex' },
+      isLoading: false,
+    });
     render(<OverlayApp />);
 
     // Debug elements must be visible.
@@ -120,7 +138,12 @@ describe('OverlayApp', () => {
     expect(screen.queryByTestId('debug-overlay-label')).not.toBeInTheDocument();
     expect(screen.queryByTestId('debug-platform-label')).not.toBeInTheDocument();
     expect(screen.queryByTestId('overlay-drag-diagnostics')).not.toBeInTheDocument();
-    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
+    await waitFor(() =>
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 100,
+        y: 100,
+      }),
+    );
   });
 
   it('should keep quick actions hidden when interaction is disabled', async () => {
@@ -136,13 +159,21 @@ describe('OverlayApp', () => {
     expect(screen.queryByTestId('overlay-interaction-disabled')).not.toBeInTheDocument();
     expect(screen.queryByTestId('quick-actions')).not.toBeInTheDocument();
     expect(screen.queryByText('Click-through on')).not.toBeInTheDocument();
-    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_codex_state'));
+    await waitFor(() =>
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 100,
+        y: 100,
+      }),
+    );
   });
 
   it('should hold position without technical error text when Codex state is unavailable', async () => {
     useAppConfigStore.getState().setConfig({ ...FALLBACK_CONFIG, isDebug: false });
     useRegistryStore.setState({ registry, isLoading: false });
-    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), overlayMode: 'follow-codex' },
+      isLoading: false,
+    });
     vi.mocked(invoke).mockImplementation((command) => {
       if (command === 'get_codex_state') return Promise.reject(new Error('state file missing'));
       if (command === 'set_overlay_click_through') return Promise.resolve(undefined);
@@ -160,7 +191,10 @@ describe('OverlayApp', () => {
   it('should keep debug nest controls while showing the local companion', async () => {
     useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
     useRegistryStore.setState({ registry, isLoading: false });
-    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), overlayMode: 'follow-codex' },
+      isLoading: false,
+    });
     render(<OverlayApp />);
 
     fireEvent.click(screen.getByRole('button', { name: 'capacity-orbit' }));
@@ -299,6 +333,13 @@ describe('OverlayApp', () => {
     useRegistryStore.setState({ registry, isLoading: false });
     useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
     render(<OverlayApp />);
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 100,
+        y: 100,
+      });
+    });
+    vi.mocked(invoke).mockClear();
 
     const companion = screen.getByRole('button', { name: '和夏以昼互动' });
     fireEvent(companion, pointerEvent('pointerdown', 120, 140));
@@ -341,6 +382,13 @@ describe('OverlayApp', () => {
     useRegistryStore.setState({ registry, isLoading: false });
     useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
     render(<OverlayApp />);
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 100,
+        y: 100,
+      });
+    });
+    vi.mocked(invoke).mockClear();
 
     const companion = screen.getByRole('button', { name: '和夏以昼互动' });
     fireEvent(companion, pointerEvent('pointerdown', 120, 140));
@@ -362,7 +410,10 @@ describe('OverlayApp', () => {
   it('should move overlay from Codex mascot bounds in follow mode', async () => {
     useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
     useRegistryStore.setState({ registry, isLoading: false });
-    useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), overlayMode: 'follow-codex' },
+      isLoading: false,
+    });
     vi.mocked(invoke).mockImplementation((command) => {
       if (command === 'get_codex_state') {
         return Promise.resolve({
@@ -437,6 +488,41 @@ describe('OverlayApp', () => {
         'save_local_settings',
         expect.objectContaining({
           settings: expect.objectContaining({ standalonePosition: { x: 100, y: 100 } }),
+        }),
+      );
+    });
+  });
+
+  it('should switch to standalone mode and persist position after dragging in follow mode', async () => {
+    useAppConfigStore.getState().setConfig(FALLBACK_CONFIG);
+    useRegistryStore.setState({ registry, isLoading: false });
+    useSettingsStore.setState({
+      settings: { ...createDefaultSettings(), overlayMode: 'follow-codex' },
+      isLoading: false,
+    });
+    render(<OverlayApp />);
+
+    const companion = screen.getByRole('button', { name: '和夏以昼互动' });
+    fireEvent(companion, pointerEvent('pointerdown', 120, 140));
+    expect(await screen.findByText('mode: manual-fallback')).toBeInTheDocument();
+
+    fireEvent(companion, pointerEvent('pointermove', 170, 190));
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith('move_overlay_to_clamped', {
+        x: 150,
+        y: 150,
+      });
+    });
+    fireEvent(companion, pointerEvent('pointerup', 170, 190));
+
+    await waitFor(() => {
+      expect(vi.mocked(invoke)).toHaveBeenCalledWith(
+        'save_local_settings',
+        expect.objectContaining({
+          settings: expect.objectContaining({
+            overlayMode: 'standalone-fixed',
+            standalonePosition: { x: 100, y: 100 },
+          }),
         }),
       );
     });

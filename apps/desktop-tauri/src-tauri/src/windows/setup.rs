@@ -3,9 +3,9 @@ use tauri::{Manager, Runtime, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use crate::platform;
 
 pub const DEBUG_OVERLAY_WIDTH: f64 = 480.0;
-pub const DEBUG_OVERLAY_HEIGHT: f64 = 260.0;
+pub const DEBUG_OVERLAY_HEIGHT: f64 = 360.0;
 pub const RELEASE_OVERLAY_WIDTH: f64 = 360.0;
-pub const RELEASE_OVERLAY_HEIGHT: f64 = 280.0;
+pub const RELEASE_OVERLAY_HEIGHT: f64 = 340.0;
 
 /// Create the settings window — a normal, titled, resizable window.
 pub fn create_settings_window<R: Runtime>(

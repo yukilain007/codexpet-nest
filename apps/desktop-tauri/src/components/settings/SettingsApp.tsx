@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { validateWidgetActionConfig } from '@codexpet/core';
+import {
+  MAX_COMPANION_SCALE,
+  MIN_COMPANION_SCALE,
+  validateWidgetActionConfig,
+} from '@codexpet/core';
 import type { ActionPlatform, OverlayMode, QuickActionSettings } from '@codexpet/core';
 import { useAppConfigStore } from '@/store/appConfigStore';
 import {
@@ -289,6 +293,24 @@ export function SettingsApp() {
                   ? 'Nest follows the Codex pet when Codex state is available. If it is not available, the overlay holds its current or saved position.'
                   : 'Nest stays at the saved standalone position. Drag the overlay when click-through is off to update the saved position.'}
               </div>
+              <label style={fieldStyle}>
+                <span style={labelStyle}>Companion size</span>
+                <input
+                  aria-label="Companion size"
+                  type="range"
+                  min={MIN_COMPANION_SCALE}
+                  max={MAX_COMPANION_SCALE}
+                  step={0.0625}
+                  value={settings.companionScale}
+                  onChange={(event) =>
+                    update({ companionScale: Number(event.currentTarget.value) }).catch(
+                      () => undefined,
+                    )
+                  }
+                  style={{ width: '100%' }}
+                />
+                <span style={descriptionStyle}>{Math.round(settings.companionScale * 100)}%</span>
+              </label>
             </div>
             <label style={toggleRowStyle}>
               <span>

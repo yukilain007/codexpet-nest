@@ -11,8 +11,9 @@ describe('settings schema', () => {
   it('creates default settings', () => {
     const settings = createDefaultSettings();
 
-    expect(settings.schemaVersion).toBe(3);
-    expect(settings.overlayMode).toBe('follow-codex');
+    expect(settings.schemaVersion).toBe(4);
+    expect(settings.overlayMode).toBe('standalone-fixed');
+    expect(settings.companionScale).toBe(0.875);
     expect(settings.activeNestId).toBeNull();
     expect(settings.alwaysOnTop).toBe(true);
     expect(settings.clickThrough).toBe(false);
@@ -31,9 +32,23 @@ describe('settings schema', () => {
 
     expect(result.usedFallback).toBe(false);
     expect(result.migrated).toBe(true);
-    expect(result.settings.schemaVersion).toBe(3);
+    expect(result.settings.schemaVersion).toBe(4);
     expect(result.settings.activeNestId).toBe('minimal-glass');
     expect(result.settings.locale).toBe('system');
+    expect(result.settings.companionScale).toBe(0.875);
+  });
+
+  it('clamps companion scale into the supported pet-size range', () => {
+    expect(
+      loadSettings({ ...createDefaultSettings(), companionScale: 2 }).settings.companionScale,
+    ).toBe(1.125);
+    expect(
+      loadSettings({ ...createDefaultSettings(), companionScale: 0.2 }).settings.companionScale,
+    ).toBe(0.625);
+    expect(
+      loadSettings({ ...createDefaultSettings(), companionScale: Number.NaN }).settings
+        .companionScale,
+    ).toBe(0.875);
   });
 
   it('preserves standalone position when switching overlay modes', () => {

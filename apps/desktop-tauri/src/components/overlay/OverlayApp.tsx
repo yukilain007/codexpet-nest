@@ -3,7 +3,7 @@ import type { PointerEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { builtInNestFixtures } from '@codexpet/renderer/fixtures/nests';
-import { getOverlayRuntimeDecision, persistStandalonePosition } from '@codexpet/core';
+import { getOverlayRuntimeDecision } from '@codexpet/core';
 import { getBuildCompanionProfileId } from '@/components/companion/buildProfile';
 import { LocalCompanionOverlay } from '@/components/companion/LocalCompanionOverlay';
 import { useAppConfigStore } from '@/store/appConfigStore';
@@ -278,6 +278,7 @@ export function OverlayApp() {
     animationFrameRef.current = null;
     const nextPosition = pendingPositionRef.current;
     if (!nextPosition) return;
+    pendingPositionRef.current = null;
     invoke('move_overlay_to_clamped', { x: nextPosition.x, y: nextPosition.y }).catch((error) => {
       updateDragDiagnostics({ lastDragError: String(error) });
     });
@@ -394,17 +395,28 @@ export function OverlayApp() {
     activeDragSessionRef.current = null;
     dragStartRef.current = null;
     updateDragDiagnostics({ draggingActive: false });
-    const persisted = persistStandalonePosition(
-      settings.overlayMode,
-      pendingPositionRef.current ?? { x: 0, y: 0 },
-    );
-    if (persisted) {
-      invoke<OverlayPosition>('get_overlay_position')
-        .then((position) => updateSettings({ standalonePosition: position }).catch(() => undefined))
-        .catch((error) =>
-          updateDragDiagnostics({ lastDragError: `position save failed: ${String(error)}` }),
-        );
+    const pendingPosition = pendingPositionRef.current;
+    pendingPositionRef.current = null;
+    if (animationFrameRef.current !== null) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
+    const finalPosition = pendingPosition
+      ? invoke<ClampedPosition>('move_overlay_to_clamped', {
+          x: pendingPosition.x,
+          y: pendingPosition.y,
+        }).then((position) => ({ x: position.x, y: position.y }))
+      : invoke<OverlayPosition>('get_overlay_position');
+    finalPosition
+      .then((position) =>
+        updateSettings({
+          overlayMode: 'standalone-fixed',
+          standalonePosition: position,
+        }).catch(() => undefined),
+      )
+      .catch((error) =>
+        updateDragDiagnostics({ lastDragError: `position save failed: ${String(error)}` }),
+      );
   };
 
   return (
@@ -540,6 +552,7 @@ export function OverlayApp() {
           onPetDragStart={handlePetDragPointerDown}
           onPetDragMove={handleDragPointerMove}
           onPetDragEnd={stopManualDrag}
+          scale={settings.companionScale}
         />
         {isDevOverlay && (
           <div style={{ textAlign: 'center', fontSize: 10, opacity: 0.82, marginTop: -4 }}>

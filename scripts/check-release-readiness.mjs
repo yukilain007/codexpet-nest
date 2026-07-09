@@ -156,7 +156,7 @@ check(
 check(
   'release overlay size configured',
   windowSource.includes('RELEASE_OVERLAY_WIDTH: f64 = 360.0') &&
-    windowSource.includes('RELEASE_OVERLAY_HEIGHT: f64 = 280.0'),
+    windowSource.includes('RELEASE_OVERLAY_HEIGHT: f64 = 340.0'),
   'windows/setup.rs',
 );
 check(
