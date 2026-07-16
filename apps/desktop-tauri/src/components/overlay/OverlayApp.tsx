@@ -4,7 +4,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { builtInNestFixtures } from '@codexpet/renderer/fixtures/nests';
 import { getOverlayRuntimeDecision } from '@codexpet/core';
-import { getBuildCompanionProfileId } from '@/components/companion/buildProfile';
+import {
+  getBuildCompanionProfileId,
+  getBuildOverlayMode,
+} from '@/components/companion/buildProfile';
 import { LocalCompanionOverlay } from '@/components/companion/LocalCompanionOverlay';
 import { useAppConfigStore } from '@/store/appConfigStore';
 import {
@@ -67,7 +70,7 @@ export function OverlayApp() {
     settings.activeNestId,
   );
   const selectedNestId = selectedNestEntry?.id ?? builtInNestFixtures[0]?.id ?? 'default';
-  const overlayMode = settings.overlayMode;
+  const overlayMode = getBuildOverlayMode(settings.overlayMode);
   const [runtimeStatus, setRuntimeStatus] = useState('Checking Codex position...');
   const [assetIssue, setAssetIssue] = useState<string | null>(null);
   const [dragDiagnostics, setDragDiagnostics] = useState<DragDiagnostics>(initialDragDiagnostics);
@@ -89,13 +92,13 @@ export function OverlayApp() {
 
   useEffect(() => {
     writeFollowDiagnostics({
-      runtimeMode: settings.overlayMode,
+      runtimeMode: overlayMode,
       lastCodexStateReadAt: null,
       lastTargetPosition: null,
-      followLoopActive: settings.overlayMode === 'follow-codex' && !settingsLoading,
+      followLoopActive: overlayMode === 'follow-codex' && !settingsLoading,
       lastMoveFailure: null,
     });
-  }, [settings.overlayMode, settingsLoading]);
+  }, [overlayMode, settingsLoading]);
 
   useEffect(() => {
     if (isLoading || settingsLoading || registryLoading) return;
@@ -137,7 +140,7 @@ export function OverlayApp() {
       setRuntimeStatus('Using the default nest because the saved nest is unavailable.');
       return;
     }
-    const runtimeDecision = getOverlayRuntimeDecision(settings.overlayMode);
+    const runtimeDecision = getOverlayRuntimeDecision(overlayMode);
     if (runtimeDecision.shouldUseStandalonePosition) {
       const position = settings.standalonePosition;
       invoke<ClampedPosition>('move_overlay_to_clamped', {
@@ -147,7 +150,7 @@ export function OverlayApp() {
         .then((clamped) => {
           setRuntimeStatus(`Restored saved overlay position x=${clamped.x}, y=${clamped.y}`);
           writeFollowDiagnostics({
-            runtimeMode: settings.overlayMode,
+            runtimeMode: overlayMode,
             lastCodexStateReadAt: null,
             lastTargetPosition: `x=${clamped.x}, y=${clamped.y}`,
             followLoopActive: false,
@@ -157,7 +160,7 @@ export function OverlayApp() {
         .catch((error) => {
           setRuntimeStatus('Keeping current overlay position.');
           writeFollowDiagnostics({
-            runtimeMode: settings.overlayMode,
+            runtimeMode: overlayMode,
             lastCodexStateReadAt: null,
             lastTargetPosition: `x=${position.x}, y=${position.y}`,
             followLoopActive: false,
@@ -180,7 +183,7 @@ export function OverlayApp() {
           if (!cancelled) {
             setRuntimeStatus('Waiting for Codex pet position.');
             writeFollowDiagnostics({
-              runtimeMode: settings.overlayMode,
+              runtimeMode: overlayMode,
               lastCodexStateReadAt: readAt,
               lastTargetPosition: lastFollowMoveRef.current
                 ? `x=${lastFollowMoveRef.current.x}, y=${lastFollowMoveRef.current.y}`
@@ -222,7 +225,7 @@ export function OverlayApp() {
         if (!cancelled) {
           setRuntimeStatus(`Following Codex pet x=${clamped.x}, y=${clamped.y}`);
           writeFollowDiagnostics({
-            runtimeMode: settings.overlayMode,
+            runtimeMode: overlayMode,
             lastCodexStateReadAt: readAt,
             lastTargetPosition: `x=${clamped.x}, y=${clamped.y}`,
             followLoopActive: true,
@@ -233,7 +236,7 @@ export function OverlayApp() {
         if (!cancelled) {
           setRuntimeStatus('Holding current position until Codex is available.');
           writeFollowDiagnostics({
-            runtimeMode: settings.overlayMode,
+            runtimeMode: overlayMode,
             lastCodexStateReadAt: readAt,
             lastTargetPosition: lastFollowMoveRef.current
               ? `x=${lastFollowMoveRef.current.x}, y=${lastFollowMoveRef.current.y}`
@@ -257,7 +260,7 @@ export function OverlayApp() {
     registryLoading,
     selectedNestId,
     settings.activeNestId,
-    settings.overlayMode,
+    overlayMode,
     settings.standalonePosition,
     settingsLoading,
   ]);

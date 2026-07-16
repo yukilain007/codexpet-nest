@@ -20,7 +20,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let config = app_config::AppConfig::detect(app.package_info());
+            let config =
+                app_config::AppConfig::detect(app.package_info(), &app.config().identifier);
             app.manage(config.clone());
 
             // Build tray (menu bar / system tray)
@@ -47,7 +48,8 @@ pub fn run() {
             }
 
             log::info!(
-                "CodexPet Nest v{} started on {}",
+                "{} v{} started on {}",
+                config.app_name,
                 config.version,
                 std::env::consts::OS
             );

@@ -1,7 +1,7 @@
 # Standalone V2 Companions Design
 
-Date: 2026-07-16  
-Status: Approved in conversation; awaiting written-spec review  
+Date: 2026-07-16
+Status: Approved and implemented
 Target version: 0.2.0
 
 ## Summary

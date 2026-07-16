@@ -11,9 +11,10 @@ pub const RELEASE_OVERLAY_HEIGHT: f64 = 340.0;
 pub fn create_settings_window<R: Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> tauri::Result<tauri::WebviewWindow<R>> {
+    let title = format!("{} Settings", app.package_info().name);
     let window =
         WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html?label=main".into()))
-            .title("CodexPet Nest Settings")
+            .title(title)
             .inner_size(860.0, 760.0)
             .min_inner_size(680.0, 560.0)
             .center()
@@ -50,12 +51,13 @@ fn register_settings_close_to_hide<R: Runtime>(window: &tauri::WebviewWindow<R>)
 pub fn create_overlay_window<R: Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> tauri::Result<tauri::WebviewWindow<R>> {
+    let title = format!("{} Overlay", app.package_info().name);
     let window = WebviewWindowBuilder::new(
         app,
         "overlay",
         WebviewUrl::App("index.html?label=overlay".into()),
     )
-    .title("CodexPet Nest Overlay")
+    .title(title)
     .inner_size(
         if cfg!(debug_assertions) {
             DEBUG_OVERLAY_WIDTH

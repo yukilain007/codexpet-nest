@@ -17,14 +17,14 @@ pub struct AppConfig {
 
 impl AppConfig {
     /// Detect runtime configuration from the package info and OS environment.
-    pub fn detect(package_info: &tauri::PackageInfo) -> Self {
+    pub fn detect(package_info: &tauri::PackageInfo, bundle_id: &str) -> Self {
         let version = package_info.version.to_string();
-        let app_name = "CodexPet Nest".to_string();
-        let bundle_id = "xyz.codexpet.nest".to_string();
+        let app_name = package_info.name.clone();
+        let bundle_id = bundle_id.to_string();
 
-        let data_directory = ProjectDirs::from("xyz", "codexpet", "CodexPet Nest")
+        let data_directory = ProjectDirs::from("xyz", "codexpet", &app_name)
             .map(|dirs| dirs.data_dir().to_string_lossy().to_string())
-            .unwrap_or_else(get_fallback_data_dir);
+            .unwrap_or_else(|| get_fallback_data_dir(&app_name, &bundle_id));
 
         let platform = std::env::consts::OS.to_string();
 
@@ -41,15 +41,52 @@ impl AppConfig {
 }
 
 #[cfg(target_os = "macos")]
-fn get_fallback_data_dir() -> String {
+fn get_fallback_data_dir(app_name: &str, _bundle_id: &str) -> String {
     let home = dirs::home_dir().unwrap_or_default();
-    home.join("Library/Application Support/CodexPet Nest")
+    home.join("Library/Application Support")
+        .join(app_name)
         .to_string_lossy()
         .to_string()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tauri::PackageInfo;
+
+    fn package_info(name: &str) -> PackageInfo {
+        PackageInfo {
+            name: name.to_string(),
+            version: "0.2.0".parse().expect("valid test version"),
+            authors: "CodexPet",
+            description: "test",
+            crate_name: "codexpet_nest",
+        }
+    }
+
+    #[test]
+    fn companion_variants_have_distinct_runtime_identity_and_storage() {
+        let xia = AppConfig::detect(
+            &package_info("CodexPet Nest Xia Yizhou"),
+            "xyz.codexpet.nest.xiayizhou",
+        );
+        let shen = AppConfig::detect(
+            &package_info("CodexPet Nest Shen Xinghui"),
+            "xyz.codexpet.nest.shenxinghui",
+        );
+
+        assert_eq!(xia.app_name, "CodexPet Nest Xia Yizhou");
+        assert_eq!(xia.bundle_id, "xyz.codexpet.nest.xiayizhou");
+        assert_eq!(shen.app_name, "CodexPet Nest Shen Xinghui");
+        assert_eq!(shen.bundle_id, "xyz.codexpet.nest.shenxinghui");
+        assert_ne!(xia.data_directory, shen.data_directory);
+    }
+}
+
 #[cfg(not(target_os = "macos"))]
-fn get_fallback_data_dir() -> String {
+fn get_fallback_data_dir(_app_name: &str, bundle_id: &str) -> String {
     let home = dirs::home_dir().unwrap_or_default();
-    home.join(".codexpet-nest").to_string_lossy().to_string()
+    home.join(format!(".{}", bundle_id.replace('.', "-")))
+        .to_string_lossy()
+        .to_string()
 }

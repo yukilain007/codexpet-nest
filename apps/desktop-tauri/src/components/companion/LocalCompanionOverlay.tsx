@@ -379,6 +379,7 @@ export function LocalCompanionOverlay({
     }
     dragGestureRef.current = null;
     if (gesture.dragged) suppressNextClickRef.current = true;
+    markActivity();
     setDragVisualState('idle');
     onPetDragEnd?.(event);
   };

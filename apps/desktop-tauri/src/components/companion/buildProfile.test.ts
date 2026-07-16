@@ -18,9 +18,10 @@ describe('build companion profile', () => {
     vi.stubEnv('VITE_COMPANION_PROFILE_ID', 'shen-xinghui');
     vi.resetModules();
 
-    const { getBuildCompanionProfileId } = await import('./buildProfile');
+    const { getBuildCompanionProfileId, getBuildOverlayMode } = await import('./buildProfile');
 
     expect(getBuildCompanionProfileId()).toBe('shen-xinghui');
+    expect(getBuildOverlayMode('follow-codex')).toBe('standalone-fixed');
   });
 
   it('falls back to Xia Yizhou for invalid build profile values', async () => {
@@ -30,5 +31,13 @@ describe('build companion profile', () => {
     const { getBuildCompanionProfileId } = await import('./buildProfile');
 
     expect(getBuildCompanionProfileId()).toBe('xia-yizhou');
+  });
+
+  it('keeps generic development builds configurable', async () => {
+    vi.resetModules();
+
+    const { getBuildOverlayMode } = await import('./buildProfile');
+
+    expect(getBuildOverlayMode('follow-codex')).toBe('follow-codex');
   });
 });

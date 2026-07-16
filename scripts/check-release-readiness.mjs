@@ -86,6 +86,8 @@ const shenXinghuiTauriConfig = readJson(
 );
 const overlaySource = readText('apps/desktop-tauri/src/components/overlay/OverlayApp.tsx');
 const settingsSource = readText('apps/desktop-tauri/src/components/settings/SettingsApp.tsx');
+const buildProfileSource = readText('apps/desktop-tauri/src/components/companion/buildProfile.ts');
+const appConfigSource = readText('apps/desktop-tauri/src-tauri/src/app_config.rs');
 const traySource = readText('apps/desktop-tauri/src-tauri/src/tray/builder.rs');
 const windowSource = readText('apps/desktop-tauri/src-tauri/src/windows/setup.rs');
 const platformMacosSource = readText('apps/desktop-tauri/src-tauri/src/platform/macos.rs');
@@ -281,10 +283,34 @@ check(
   'commands/config.rs',
 );
 check(
-  'Windows click-through explicitly unimplemented',
-  platformMacosSource.includes('Windows click-through is not implemented yet') &&
-    platformMacosSource.includes('Err(WINDOWS_CLICK_THROUGH_NOT_IMPLEMENTED.to_string())'),
+  'Windows click-through uses the native Tauri window API',
+  platformMacosSource.includes('#[cfg(target_os = "windows")]') &&
+    /window\s*\.set_ignore_cursor_events\(enabled\)/.test(platformMacosSource) &&
+    !platformMacosSource.includes('WINDOWS_CLICK_THROUGH_NOT_IMPLEMENTED'),
   'platform/macos.rs',
+);
+check(
+  'variant builds are standalone-only at runtime',
+  buildProfileSource.includes('getBuildOverlayMode') &&
+    buildProfileSource.includes("'standalone-fixed'") &&
+    overlaySource.includes('getBuildOverlayMode(settings.overlayMode)') &&
+    settingsSource.includes('getBuildOverlayMode(settings.overlayMode)'),
+  'buildProfile.ts + OverlayApp.tsx + SettingsApp.tsx',
+);
+check(
+  'variant runtime identity and storage are isolated',
+  appConfigSource.includes('package_info.name.clone()') &&
+    appConfigSource.includes('bundle_id.to_string()') &&
+    /ProjectDirs::from\("xyz", "codexpet", &?app_name\)/.test(appConfigSource) &&
+    !appConfigSource.includes('let app_name = "CodexPet Nest"'),
+  'app_config.rs',
+);
+check(
+  'tray and windows use variant identity',
+  traySource.includes('app.default_window_icon()') &&
+    traySource.includes('app.package_info().name') &&
+    windowSource.includes('app.package_info().name'),
+  'tray/builder.rs + windows/setup.rs',
 );
 check(
   'action capabilities keep shell disabled',

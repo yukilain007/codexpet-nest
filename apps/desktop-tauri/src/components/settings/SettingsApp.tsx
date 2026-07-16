@@ -15,6 +15,10 @@ import {
 } from '@/store/registryStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { DebugPanel } from '@/components/debug/DebugPanel';
+import {
+  getBuildOverlayMode,
+  isStandaloneCompanionBuild,
+} from '@/components/companion/buildProfile';
 
 const overlayModeOptions: OverlayMode[] = ['follow-codex', 'standalone-fixed'];
 const overlayModeLabels: Record<OverlayMode, string> = {
@@ -74,6 +78,11 @@ export function SettingsApp() {
     settings.activeNestId,
   );
   const activeNestId = activeNestEntry?.id ?? '';
+  const standaloneCompanionBuild = isStandaloneCompanionBuild();
+  const overlayMode = getBuildOverlayMode(settings.overlayMode);
+  const availableOverlayModes: OverlayMode[] = standaloneCompanionBuild
+    ? ['standalone-fixed']
+    : overlayModeOptions;
   const actionPlatform = toActionPlatform(config.platform);
   const widgetActionConfig = validateWidgetActionConfig(
     settings.widgets,
@@ -107,10 +116,11 @@ export function SettingsApp() {
   }, []);
 
   useEffect(() => {
+    if (standaloneCompanionBuild) return undefined;
     refreshFollowDiagnostics();
     const interval = window.setInterval(refreshFollowDiagnostics, 1_000);
     return () => window.clearInterval(interval);
-  }, [refreshFollowDiagnostics]);
+  }, [refreshFollowDiagnostics, standaloneCompanionBuild]);
 
   const showOverlay = () => {
     invoke('show_overlay')
@@ -253,7 +263,7 @@ export function SettingsApp() {
               <div>
                 <h2 style={sectionTitleStyle}>Overlay</h2>
                 <p style={descriptionStyle}>
-                  Control whether the nest is visible, interactive, and linked to Codex.
+                  Control whether the companion is visible and interactive on this device.
                 </p>
               </div>
               <span style={{ ...pillStyle, color: overlayVisible ? '#047857' : '#b91c1c' }}>
@@ -273,7 +283,7 @@ export function SettingsApp() {
                 <span style={labelStyle}>Overlay mode</span>
                 <select
                   aria-label="Overlay mode"
-                  value={settings.overlayMode}
+                  value={overlayMode}
                   onChange={(event) =>
                     update({ overlayMode: event.currentTarget.value as OverlayMode }).catch(
                       () => undefined,
@@ -281,7 +291,7 @@ export function SettingsApp() {
                   }
                   style={selectStyle}
                 >
-                  {overlayModeOptions.map((mode) => (
+                  {availableOverlayModes.map((mode) => (
                     <option key={mode} value={mode}>
                       {overlayModeLabels[mode]}
                     </option>
@@ -289,7 +299,7 @@ export function SettingsApp() {
                 </select>
               </label>
               <div style={modeHintStyle}>
-                {settings.overlayMode === 'follow-codex'
+                {overlayMode === 'follow-codex'
                   ? 'Nest follows the Codex pet when Codex state is available. If it is not available, the overlay holds its current or saved position.'
                   : 'Nest stays at the saved standalone position. Drag the overlay when click-through is off to update the saved position.'}
               </div>
@@ -334,37 +344,39 @@ export function SettingsApp() {
             )}
           </section>
 
-          <section style={cardStyle}>
-            <h2 style={sectionTitleStyle}>Follow Status</h2>
-            <p style={{ ...descriptionStyle, marginBottom: 12 }}>
-              Runtime diagnostics stay here instead of inside the overlay.
-            </p>
-            <div style={fieldGridStyle}>
-              <div style={statusTileStyle}>
-                <span style={labelStyle}>Mode</span>
-                <strong>{overlayModeLabels[settings.overlayMode]}</strong>
-              </div>
-              <div style={statusTileStyle}>
-                <span style={labelStyle}>Follow loop</span>
-                <strong>{followDiagnostics?.followLoopActive ? 'Active' : 'Not active'}</strong>
-              </div>
-              <div style={statusTileStyle}>
-                <span style={labelStyle}>Last Codex read</span>
-                <strong>{followDiagnostics?.lastCodexStateReadAt ?? 'Not recorded yet'}</strong>
-              </div>
-            </div>
-            {followDiagnostics?.lastMoveFailure && (
-              <p style={{ ...descriptionStyle, color: '#b45309', marginTop: 12 }}>
-                Codex follow is unavailable right now. The overlay will keep its current or saved
-                position. Open Development Diagnostics for technical details.
+          {!standaloneCompanionBuild && (
+            <section style={cardStyle}>
+              <h2 style={sectionTitleStyle}>Follow Status</h2>
+              <p style={{ ...descriptionStyle, marginBottom: 12 }}>
+                Runtime diagnostics stay here instead of inside the overlay.
               </p>
-            )}
-            <p style={{ ...descriptionStyle, marginTop: 12 }}>
-              {isSaving
-                ? 'Saving settings...'
-                : `Saved locally to ${config.dataDirectory}/settings.json`}
-            </p>
-          </section>
+              <div style={fieldGridStyle}>
+                <div style={statusTileStyle}>
+                  <span style={labelStyle}>Mode</span>
+                  <strong>{overlayModeLabels[overlayMode]}</strong>
+                </div>
+                <div style={statusTileStyle}>
+                  <span style={labelStyle}>Follow loop</span>
+                  <strong>{followDiagnostics?.followLoopActive ? 'Active' : 'Not active'}</strong>
+                </div>
+                <div style={statusTileStyle}>
+                  <span style={labelStyle}>Last Codex read</span>
+                  <strong>{followDiagnostics?.lastCodexStateReadAt ?? 'Not recorded yet'}</strong>
+                </div>
+              </div>
+              {followDiagnostics?.lastMoveFailure && (
+                <p style={{ ...descriptionStyle, color: '#b45309', marginTop: 12 }}>
+                  Codex follow is unavailable right now. The overlay will keep its current or saved
+                  position. Open Development Diagnostics for technical details.
+                </p>
+              )}
+              <p style={{ ...descriptionStyle, marginTop: 12 }}>
+                {isSaving
+                  ? 'Saving settings...'
+                  : `Saved locally to ${config.dataDirectory}/settings.json`}
+              </p>
+            </section>
+          )}
 
           <section style={cardStyle}>
             <h2 style={sectionTitleStyle}>Widgets / Actions</h2>

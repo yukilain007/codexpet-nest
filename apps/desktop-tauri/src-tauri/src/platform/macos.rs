@@ -101,22 +101,20 @@ pub fn apply_native_transparency<R: Runtime>(_window: &tauri::WebviewWindow<R>) 
     );
 }
 
-#[cfg(target_os = "windows")]
-pub const WINDOWS_CLICK_THROUGH_NOT_IMPLEMENTED: &str =
-    "Windows click-through is not implemented yet";
-
-/// Stub for Windows until Phase 12 implements the Win32 hit-test/layered-window path.
+/// Toggle click-through mode on Windows using Tauri's native window API.
+///
+/// Tauri delegates this call to tao, whose Windows implementation updates the
+/// window's native ignore-cursor-events flag on the window thread.
 #[cfg(target_os = "windows")]
 pub fn set_click_through<R: Runtime>(
-    _window: &tauri::WebviewWindow<R>,
+    window: &tauri::WebviewWindow<R>,
     enabled: bool,
 ) -> Result<(), String> {
-    log::warn!(
-        "{}. Requested enabled={}. Expected Phase 12 Win32 implementation: WS_EX_LAYERED + WS_EX_TRANSPARENT.",
-        WINDOWS_CLICK_THROUGH_NOT_IMPLEMENTED,
-        enabled
-    );
-    Err(WINDOWS_CLICK_THROUGH_NOT_IMPLEMENTED.to_string())
+    window
+        .set_ignore_cursor_events(enabled)
+        .map_err(|error| format!("failed to set Windows click-through: {error}"))?;
+    log::info!("Overlay click-through set to: {}", enabled);
+    Ok(())
 }
 
 /// Stub for other non-macOS platforms.

@@ -394,6 +394,27 @@ describe('LocalCompanionOverlay', () => {
     );
   });
 
+  it('starts a fresh waiting dwell after a long drag ends', async () => {
+    vi.useFakeTimers();
+    vi.mocked(invoke).mockResolvedValue(rightCursorSample);
+    render(<LocalCompanionOverlay clickThrough={false} profileId="xia-yizhou" />);
+    await flushAsyncWork();
+    const button = screen.getByRole('button', { name: '和夏以昼互动' });
+
+    fireEvent(button, pointerEvent('pointerdown', 100, 100));
+    await act(async () => vi.advanceTimersByTimeAsync(3_000));
+    fireEvent(button, pointerEvent('pointerup', 100, 100));
+
+    expect(screen.getByTestId('local-companion-pet')).toHaveAttribute('data-look-direction', '4');
+    await act(async () => vi.advanceTimersByTimeAsync(2_399));
+    expect(screen.getByTestId('local-companion-pet')).toHaveAttribute('data-look-direction', '4');
+    await act(async () => vi.advanceTimersByTimeAsync(81));
+    expect(screen.getByTestId('local-companion-pet')).toHaveAttribute(
+      'data-animation-state',
+      'waiting',
+    );
+  });
+
   it('starts the new profile waiting dwell from zero when profiles switch', async () => {
     vi.useFakeTimers();
     vi.mocked(invoke).mockResolvedValue(rightCursorSample);
