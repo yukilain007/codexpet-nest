@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent } from 'react';
 import {
   categoryForInteraction,
@@ -10,23 +10,31 @@ import {
 import {
   CELL_HEIGHT,
   CELL_WIDTH,
+  completeAnimationDuration,
   getAnimationFrameCount,
+  getAnimationFrameDuration,
   type PetAnimationState,
+  type PetPose,
 } from './animation';
 import { PetSprite } from './PetSprite';
+import {
+  clickReactionForCount,
+  nextAutonomousDelayMs,
+  resolveCompanionPoseMode,
+  type DragVisualState,
+} from './stateMachine';
 import { SpeechBubble } from './SpeechBubble';
+import { useGlobalCursorGaze } from './useGlobalCursorGaze';
 
-const FRAME_INTERVAL_MS = 180;
 const BUBBLE_TIMEOUT_MS = 4_200;
 const CLICK_STREAK_WINDOW_MS = 2_200;
 const IDLE_REPLY_MS = 45_000;
 const DRAG_THRESHOLD_PX = 6;
+const ATTENTION_SESSION_RESET_MS = 2_000;
 const ROOT_WIDTH_PX = 320;
 const BUBBLE_RESERVED_HEIGHT_PX = 72;
 const BUBBLE_GAP_PX = 8;
 const DRAG_LIFT_SPACE_PX = 16;
-
-type DragVisualState = 'idle' | 'held' | 'left' | 'right';
 
 interface DragGesture {
   pointerId: number;
@@ -58,21 +66,101 @@ export function LocalCompanionOverlay({
   const petHeight = Math.round(CELL_HEIGHT * layoutScale);
   const rootHeight = petHeight + BUBBLE_RESERVED_HEIGHT_PX + BUBBLE_GAP_PX + DRAG_LIFT_SPACE_PX;
   const bubbleBottom = petHeight + BUBBLE_GAP_PX;
-  const [animationState, setAnimationState] = useState<PetAnimationState>('idle');
+  const petButtonRef = useRef<HTMLButtonElement>(null);
+  const gaze = useGlobalCursorGaze(petButtonRef, true);
   const [frame, setFrame] = useState(0);
   const [reply, setReply] = useState<string | null>(null);
   const [dragVisual, setDragVisual] = useState<DragVisualState>('idle');
+  const [reactionState, setReactionState] = useState<PetAnimationState | null>(null);
+  const [specialState, setSpecialState] = useState<PetAnimationState | null>(null);
+  const [activityEpoch, setActivityEpoch] = useState(0);
+  const [autonomousDelayMs, setAutonomousDelayMs] = useState(profile.cadence.autonomousIdleMs);
   const clickStreakRef = useRef<{ count: number; lastAt: number }>({ count: 0, lastAt: 0 });
-  const animationStateRef = useRef<PetAnimationState>('idle');
   const dragGestureRef = useRef<DragGesture | null>(null);
   const suppressNextClickRef = useRef(false);
+  const reactionTimerRef = useRef<number | null>(null);
+  const specialTimerRef = useRef<number | null>(null);
+  const autonomousTimerRef = useRef<number | null>(null);
+  const outsideResetTimerRef = useRef<number | null>(null);
+  const specialStateRef = useRef<PetAnimationState | null>(null);
+  const waitingUsedRef = useRef(false);
+  const waitingEligibleAtRef = useRef(0);
+  const previousInAttentionRangeRef = useRef(false);
+  const previousProfileIdRef = useRef(profile.id);
+
+  const mode = resolveCompanionPoseMode({
+    drag: dragVisual,
+    reaction: reactionState,
+    special: specialState,
+    lookDirection: gaze.directionIndex,
+  });
+  const animatedState = mode.kind === 'animation' ? mode.state : null;
+  const pose: PetPose =
+    mode.kind === 'look' ? mode : { kind: 'animation', state: mode.state, frame };
+
+  const clearReactionTimer = useCallback(() => {
+    if (reactionTimerRef.current === null) return;
+    window.clearTimeout(reactionTimerRef.current);
+    reactionTimerRef.current = null;
+  }, []);
+
+  const clearSpecialTimer = useCallback(() => {
+    if (specialTimerRef.current === null) return;
+    window.clearTimeout(specialTimerRef.current);
+    specialTimerRef.current = null;
+  }, []);
+
+  const clearAutonomousTimer = useCallback(() => {
+    if (autonomousTimerRef.current === null) return;
+    window.clearTimeout(autonomousTimerRef.current);
+    autonomousTimerRef.current = null;
+  }, []);
+
+  const updateSpecialState = useCallback((next: PetAnimationState | null) => {
+    specialStateRef.current = next;
+    setSpecialState(next);
+  }, []);
+
+  const cancelSpecialMotion = useCallback(() => {
+    clearSpecialTimer();
+    updateSpecialState(null);
+  }, [clearSpecialTimer, updateSpecialState]);
+
+  const markActivity = useCallback(() => {
+    clearAutonomousTimer();
+    cancelSpecialMotion();
+    waitingEligibleAtRef.current = Date.now() + profile.cadence.waitingDwellMs;
+    setAutonomousDelayMs(profile.cadence.autonomousIdleMs);
+    setActivityEpoch((current) => current + 1);
+  }, [cancelSpecialMotion, clearAutonomousTimer, profile.cadence]);
+
+  const startReaction = useCallback(
+    (state: PetAnimationState, durationMs: number) => {
+      clearReactionTimer();
+      setReactionState(state);
+      setFrame(0);
+      reactionTimerRef.current = window.setTimeout(() => {
+        reactionTimerRef.current = null;
+        setReactionState(null);
+      }, durationMs);
+    },
+    [clearReactionTimer],
+  );
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setFrame((current) => (current + 1) % getAnimationFrameCount(animationState));
-    }, FRAME_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [animationState]);
+    setFrame(0);
+  }, [animatedState]);
+
+  useEffect(() => {
+    if (!animatedState) return undefined;
+    const timer = window.setTimeout(
+      () => {
+        setFrame((current) => (current + 1) % getAnimationFrameCount(animatedState));
+      },
+      getAnimationFrameDuration(animatedState, frame),
+    );
+    return () => window.clearTimeout(timer);
+  }, [animatedState, frame]);
 
   useEffect(() => {
     if (reply === null) return undefined;
@@ -88,28 +176,146 @@ export function LocalCompanionOverlay({
     return () => window.clearInterval(timer);
   }, [clickThrough, profile.id]);
 
-  const setCompanionAnimation = (next: PetAnimationState) => {
-    if (animationStateRef.current === next) return;
-    animationStateRef.current = next;
-    setAnimationState(next);
-    setFrame(0);
-  };
+  useEffect(() => {
+    if (previousProfileIdRef.current === profile.id) return;
+    previousProfileIdRef.current = profile.id;
+    clearReactionTimer();
+    setReactionState(null);
+    clearAutonomousTimer();
+    cancelSpecialMotion();
+    if (outsideResetTimerRef.current !== null) {
+      window.clearTimeout(outsideResetTimerRef.current);
+      outsideResetTimerRef.current = null;
+    }
+    waitingUsedRef.current = false;
+    waitingEligibleAtRef.current = Date.now() + profile.cadence.waitingDwellMs;
+    clickStreakRef.current = { count: 0, lastAt: 0 };
+    setReply(null);
+    setAutonomousDelayMs(profile.cadence.autonomousIdleMs);
+    setActivityEpoch((current) => current + 1);
+  }, [
+    cancelSpecialMotion,
+    clearAutonomousTimer,
+    clearReactionTimer,
+    profile.cadence.autonomousIdleMs,
+    profile.cadence.waitingDwellMs,
+    profile.id,
+  ]);
+
+  useEffect(() => {
+    if (gaze.inAttentionRange) {
+      if (outsideResetTimerRef.current !== null) {
+        window.clearTimeout(outsideResetTimerRef.current);
+        outsideResetTimerRef.current = null;
+      }
+    } else if (outsideResetTimerRef.current === null) {
+      outsideResetTimerRef.current = window.setTimeout(() => {
+        outsideResetTimerRef.current = null;
+        waitingUsedRef.current = false;
+      }, ATTENTION_SESSION_RESET_MS);
+    }
+  }, [gaze.inAttentionRange]);
+
+  useEffect(() => {
+    const cursorReentered = gaze.inAttentionRange && !previousInAttentionRangeRef.current;
+    previousInAttentionRangeRef.current = gaze.inAttentionRange;
+    if (!cursorReentered) return;
+
+    clearAutonomousTimer();
+    if (specialStateRef.current === 'running' || specialStateRef.current === 'review') {
+      cancelSpecialMotion();
+    }
+    setAutonomousDelayMs(profile.cadence.autonomousIdleMs);
+    setActivityEpoch((current) => current + 1);
+  }, [
+    cancelSpecialMotion,
+    clearAutonomousTimer,
+    gaze.inAttentionRange,
+    profile.cadence.autonomousIdleMs,
+  ]);
+
+  useEffect(() => {
+    if (
+      !gaze.inAttentionRange ||
+      waitingUsedRef.current ||
+      gaze.stationaryForMs < profile.cadence.waitingDwellMs ||
+      Date.now() < waitingEligibleAtRef.current ||
+      dragVisual !== 'idle' ||
+      reactionState !== null ||
+      specialState !== null
+    ) {
+      return;
+    }
+
+    waitingUsedRef.current = true;
+    updateSpecialState('waiting');
+    specialTimerRef.current = window.setTimeout(() => {
+      specialTimerRef.current = null;
+      updateSpecialState(null);
+    }, completeAnimationDuration('waiting'));
+  }, [
+    dragVisual,
+    gaze.inAttentionRange,
+    gaze.stationaryForMs,
+    profile.cadence.waitingDwellMs,
+    reactionState,
+    specialState,
+    updateSpecialState,
+  ]);
+
+  useEffect(() => {
+    if (
+      gaze.inAttentionRange ||
+      dragVisual !== 'idle' ||
+      reactionState !== null ||
+      specialState !== null
+    ) {
+      clearAutonomousTimer();
+      return undefined;
+    }
+
+    clearAutonomousTimer();
+    autonomousTimerRef.current = window.setTimeout(() => {
+      autonomousTimerRef.current = null;
+      updateSpecialState('running');
+      specialTimerRef.current = window.setTimeout(() => {
+        updateSpecialState('review');
+        specialTimerRef.current = window.setTimeout(() => {
+          specialTimerRef.current = null;
+          updateSpecialState(null);
+          setAutonomousDelayMs(nextAutonomousDelayMs(Math.random()));
+          setActivityEpoch((current) => current + 1);
+        }, completeAnimationDuration('review'));
+      }, completeAnimationDuration('running'));
+    }, autonomousDelayMs);
+
+    return clearAutonomousTimer;
+  }, [
+    activityEpoch,
+    autonomousDelayMs,
+    clearAutonomousTimer,
+    dragVisual,
+    gaze.inAttentionRange,
+    reactionState,
+    specialState,
+    updateSpecialState,
+  ]);
+
+  useEffect(
+    () => () => {
+      clearReactionTimer();
+      clearSpecialTimer();
+      clearAutonomousTimer();
+      if (outsideResetTimerRef.current !== null) {
+        window.clearTimeout(outsideResetTimerRef.current);
+        outsideResetTimerRef.current = null;
+      }
+    },
+    [clearAutonomousTimer, clearReactionTimer, clearSpecialTimer],
+  );
 
   const setDragVisualState = (next: DragVisualState) => {
     setDragVisual(next);
-    if (next === 'right') {
-      setCompanionAnimation('running-right');
-      return;
-    }
-    if (next === 'left') {
-      setCompanionAnimation('running-left');
-      return;
-    }
-    if (next === 'held') {
-      setCompanionAnimation('jumping');
-      return;
-    }
-    setCompanionAnimation('idle');
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
@@ -127,6 +333,9 @@ export function LocalCompanionOverlay({
       dragged: false,
     };
     suppressNextClickRef.current = false;
+    clearReactionTimer();
+    setReactionState(null);
+    markActivity();
     setDragVisualState('held');
     onPetDragStart?.(event);
   };
@@ -174,6 +383,13 @@ export function LocalCompanionOverlay({
     onPetDragEnd?.(event);
   };
 
+  const handlePointerCancel = (event: PointerEvent<HTMLElement>) => {
+    if (!dragGestureRef.current) return;
+    handlePointerEnd(event);
+    suppressNextClickRef.current = false;
+    startReaction('failed', 1_400);
+  };
+
   const handleClick = () => {
     if (clickThrough) return;
     if (suppressNextClickRef.current) {
@@ -185,11 +401,15 @@ export function LocalCompanionOverlay({
     const count = nowMs - previous.lastAt <= CLICK_STREAK_WINDOW_MS ? previous.count + 1 : 1;
     clickStreakRef.current = { count, lastAt: nowMs };
     const category = categoryForInteraction({ now: new Date(nowMs), clickCount: count });
-    setReply(selectCompanionReply(category, nowMs, profile.id).text);
-    setCompanionAnimation('waving');
-    window.setTimeout(() => {
-      if (!dragGestureRef.current) setCompanionAnimation('idle');
-    }, 900);
+    const selectedReply = selectCompanionReply(category, nowMs, profile.id);
+    setReply(
+      category === 'secret'
+        ? selectStableReplyText(profile.replies.secret, nowMs, selectedReply.text)
+        : selectedReply.text,
+    );
+    markActivity();
+    const reaction = clickReactionForCount(count);
+    startReaction(reaction.state, reaction.durationMs);
   };
 
   const dragTransform =
@@ -236,13 +456,14 @@ export function LocalCompanionOverlay({
         }}
       >
         <button
+          ref={petButtonRef}
           type="button"
           aria-label={profile.interactionLabel}
           data-drag-visual={dragVisual}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerEnd}
-          onPointerCancel={handlePointerEnd}
+          onPointerCancel={handlePointerCancel}
           onClick={handleClick}
           style={{
             border: 0,
@@ -255,11 +476,7 @@ export function LocalCompanionOverlay({
             touchAction: 'none',
           }}
         >
-          <PetSprite
-            pose={{ kind: 'animation', state: animationState, frame }}
-            spritesheetUrl={profile.spritesheetUrl}
-            scale={scale}
-          />
+          <PetSprite pose={pose} spritesheetUrl={profile.spritesheetUrl} scale={scale} />
         </button>
       </div>
     </div>
@@ -268,4 +485,10 @@ export function LocalCompanionOverlay({
 
 function getPixelStableLayoutScale(scale: number): number {
   return Math.max(1 / 16, Math.round(scale * 16) / 16);
+}
+
+function selectStableReplyText(replies: string[], seed: number, fallback: string): string {
+  if (replies.length === 0) return fallback;
+  const index = ((Math.floor(seed) % replies.length) + replies.length) % replies.length;
+  return replies[index] ?? fallback;
 }
