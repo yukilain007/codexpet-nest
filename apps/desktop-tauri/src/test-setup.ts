@@ -144,6 +144,7 @@ beforeEach(async () => {
           cursor_y: 300,
           window_x: 100,
           window_y: 100,
+          cursor_scale_factor: 1,
           scale_factor: 1,
         });
       case 'convert_position':

@@ -17,6 +17,7 @@ pub struct OverlayCursorSample {
     cursor_y: f64,
     window_x: i32,
     window_y: i32,
+    cursor_scale_factor: f64,
     scale_factor: f64,
 }
 
@@ -159,11 +160,20 @@ pub fn get_overlay_cursor_sample(app: tauri::AppHandle) -> Result<OverlayCursorS
     let scale_factor = window
         .scale_factor()
         .map_err(|error| format!("Overlay scale factor unavailable: {error}"))?;
+    #[cfg(target_os = "macos")]
+    let cursor_scale_factor = app
+        .primary_monitor()
+        .map_err(|error| format!("Primary monitor unavailable: {error}"))?
+        .ok_or_else(|| "Primary monitor not found".to_string())?
+        .scale_factor();
+    #[cfg(not(target_os = "macos"))]
+    let cursor_scale_factor = scale_factor;
     Ok(OverlayCursorSample {
         cursor_x: cursor.x,
         cursor_y: cursor.y,
         window_x: position.x,
         window_y: position.y,
+        cursor_scale_factor,
         scale_factor,
     })
 }
@@ -235,11 +245,15 @@ mod tests {
             cursor_y: 320.25,
             window_x: 100,
             window_y: 200,
-            scale_factor: 2.0,
+            cursor_scale_factor: 2.0,
+            scale_factor: 1.5,
         };
         let value = serde_json::to_value(sample).expect("cursor sample should serialize");
         assert_eq!(value["cursor_x"], 640.5);
+        assert_eq!(value["cursor_y"], 320.25);
+        assert_eq!(value["window_x"], 100);
         assert_eq!(value["window_y"], 200);
-        assert_eq!(value["scale_factor"], 2.0);
+        assert_eq!(value["cursor_scale_factor"], 2.0);
+        assert_eq!(value["scale_factor"], 1.5);
     }
 }
