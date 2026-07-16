@@ -118,6 +118,17 @@ describe('local companion replies', () => {
     expect(getCompanionProfile().id).toBe(DEFAULT_COMPANION_PROFILE_ID);
   });
 
+  it('keeps distinct approved interaction cadence per profile', () => {
+    expect(getCompanionProfile('xia-yizhou').cadence).toEqual({
+      waitingDwellMs: 2_400,
+      autonomousIdleMs: 90_000,
+    });
+    expect(getCompanionProfile('shen-xinghui').cadence).toEqual({
+      waitingDwellMs: 3_000,
+      autonomousIdleMs: 105_000,
+    });
+  });
+
   it('stores Shen Xinghui layered character setting on the profile', () => {
     const profile = getCompanionProfile('shen-xinghui');
 

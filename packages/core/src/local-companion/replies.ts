@@ -42,11 +42,17 @@ export interface CompanionDialogueLine {
   note: string;
 }
 
+export interface CompanionCadence {
+  waitingDwellMs: number;
+  autonomousIdleMs: number;
+}
+
 export interface CompanionProfile {
   id: CompanionProfileId;
   displayName: string;
   interactionLabel: string;
   spritesheetUrl: string;
+  cadence: CompanionCadence;
   persona?: CompanionPersona;
   dialogues?: CompanionDialogueLine[];
   replies: CompanionReplySet;
@@ -459,6 +465,7 @@ export const COMPANION_PROFILES: Record<CompanionProfileId, CompanionProfile> = 
     displayName: '夏以昼',
     interactionLabel: '和夏以昼互动',
     spritesheetUrl: '/pets/xia-yizhou/spritesheet.webp',
+    cadence: { waitingDwellMs: 2_400, autonomousIdleMs: 90_000 },
     dialogues: XIA_YIZHOU_DIALOGUES,
     replies: XIA_YIZHOU_REPLIES,
   },
@@ -467,6 +474,7 @@ export const COMPANION_PROFILES: Record<CompanionProfileId, CompanionProfile> = 
     displayName: '沈星回猫猫',
     interactionLabel: '和沈星回互动',
     spritesheetUrl: '/pets/shen-xinghui/spritesheet.webp',
+    cadence: { waitingDwellMs: 3_000, autonomousIdleMs: 105_000 },
     persona: SHEN_XINGHUI_PERSONA,
     replies: SHEN_XINGHUI_REPLIES,
   },
