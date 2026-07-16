@@ -256,8 +256,7 @@ export function LocalCompanionOverlay({
           }}
         >
           <PetSprite
-            state={animationState}
-            frame={frame}
+            pose={{ kind: 'animation', state: animationState, frame }}
             spritesheetUrl={profile.spritesheetUrl}
             scale={scale}
           />

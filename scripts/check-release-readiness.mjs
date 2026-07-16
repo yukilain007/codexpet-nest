@@ -234,10 +234,14 @@ check(
   'LocalCompanionOverlay.tsx',
 );
 check(
-  'pet drag direction animations configured',
-  companionAnimationSource.includes("'running-right': { row: 1, frames: 8 }") &&
-    companionAnimationSource.includes("'running-left': { row: 2, frames: 8 }") &&
-    companionAnimationSource.includes('jumping: { row: 4, frames: 4 }'),
+  'v2 companion animation rows configured',
+  /'running-right':\s*\{\s*row:\s*1,\s*frames:\s*8/.test(companionAnimationSource) &&
+    /'running-left':\s*\{\s*row:\s*2,\s*frames:\s*8/.test(companionAnimationSource) &&
+    /jumping:\s*\{\s*row:\s*4,\s*frames:\s*5/.test(companionAnimationSource) &&
+    /failed:\s*\{\s*row:\s*5,\s*frames:\s*8/.test(companionAnimationSource) &&
+    /waiting:\s*\{\s*row:\s*6,\s*frames:\s*6/.test(companionAnimationSource) &&
+    /running:\s*\{\s*row:\s*7,\s*frames:\s*6/.test(companionAnimationSource) &&
+    /review:\s*\{\s*row:\s*8,\s*frames:\s*6/.test(companionAnimationSource),
   'animation.ts',
 );
 check(
