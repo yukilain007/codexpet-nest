@@ -77,6 +77,7 @@ pub fn run() {
             commands::debug::reset_overlay_position,
             commands::debug::resize_overlay_debug,
             commands::debug::get_overlay_position,
+            commands::debug::get_overlay_cursor_sample,
             commands::debug::set_overlay_position,
             commands::debug::move_overlay_to_clamped,
             commands::debug::move_overlay_by,

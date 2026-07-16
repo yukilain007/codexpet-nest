@@ -138,6 +138,14 @@ beforeEach(async () => {
         return Promise.resolve(true);
       case 'get_overlay_position':
         return Promise.resolve({ x: 100, y: 100 });
+      case 'get_overlay_cursor_sample':
+        return Promise.resolve({
+          cursor_x: 900,
+          cursor_y: 300,
+          window_x: 100,
+          window_y: 100,
+          scale_factor: 1,
+        });
       case 'convert_position':
         return Promise.resolve({ x: 0, y: 0, scale_factor: 1, display_index: 0 });
       case 'move_overlay_to_clamped':

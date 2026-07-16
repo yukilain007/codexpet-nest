@@ -11,6 +11,15 @@ pub struct OverlayPosition {
     y: i32,
 }
 
+#[derive(Debug, Serialize)]
+pub struct OverlayCursorSample {
+    cursor_x: f64,
+    cursor_y: f64,
+    window_x: i32,
+    window_y: i32,
+    scale_factor: f64,
+}
+
 /// Returns the current Codex pet state: overlay open/closed, bounds, etc.
 #[tauri::command]
 pub fn get_codex_state() -> CodexState {
@@ -137,6 +146,29 @@ pub fn get_overlay_position(app: tauri::AppHandle) -> Result<OverlayPosition, St
 }
 
 #[tauri::command]
+pub fn get_overlay_cursor_sample(app: tauri::AppHandle) -> Result<OverlayCursorSample, String> {
+    let cursor = app
+        .cursor_position()
+        .map_err(|error| format!("Cursor position unavailable: {error}"))?;
+    let window = app
+        .get_webview_window("overlay")
+        .ok_or_else(|| "Overlay window not found".to_string())?;
+    let position = window
+        .outer_position()
+        .map_err(|error| format!("Overlay position unavailable: {error}"))?;
+    let scale_factor = window
+        .scale_factor()
+        .map_err(|error| format!("Overlay scale factor unavailable: {error}"))?;
+    Ok(OverlayCursorSample {
+        cursor_x: cursor.x,
+        cursor_y: cursor.y,
+        window_x: position.x,
+        window_y: position.y,
+        scale_factor,
+    })
+}
+
+#[tauri::command]
 pub fn set_overlay_position(app: tauri::AppHandle, x: i32, y: i32) -> Result<(), String> {
     windows::set_overlay_position_window(&app, x, y)
 }
@@ -194,5 +226,20 @@ mod tests {
 
         assert_eq!(value["x"], 12);
         assert_eq!(value["y"], 34);
+    }
+
+    #[test]
+    fn overlay_cursor_sample_serializes_for_frontend() {
+        let sample = OverlayCursorSample {
+            cursor_x: 640.5,
+            cursor_y: 320.25,
+            window_x: 100,
+            window_y: 200,
+            scale_factor: 2.0,
+        };
+        let value = serde_json::to_value(sample).expect("cursor sample should serialize");
+        assert_eq!(value["cursor_x"], 640.5);
+        assert_eq!(value["window_y"], 200);
+        assert_eq!(value["scale_factor"], 2.0);
     }
 }
