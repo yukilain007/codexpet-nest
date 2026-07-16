@@ -31,7 +31,7 @@ describe('SettingsApp', () => {
     useSettingsStore.setState({ settings: createDefaultSettings(), isLoading: false });
     render(<SettingsApp />);
     expect(screen.getByRole('heading', { name: /Settings/i })).toBeInTheDocument();
-    expect(screen.getByText(/Version: 0.1.12/)).toBeInTheDocument();
+    expect(screen.getByText(/Version: 0.2.0/)).toBeInTheDocument();
     expect(screen.getByLabelText('Overlay mode')).toHaveValue('standalone-fixed');
     expect(screen.getAllByText('Standalone fixed/manual').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Companion size')).toHaveValue('0.875');

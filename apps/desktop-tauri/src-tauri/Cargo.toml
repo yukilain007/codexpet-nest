@@ -1,6 +1,6 @@
 [package]
 name = "codexpet-nest"
-version = "0.1.12"
+version = "0.2.0"
 description = "CodexPet Nest Desktop Application"
 authors = ["Ryan Niu"]
 edition = "2021"

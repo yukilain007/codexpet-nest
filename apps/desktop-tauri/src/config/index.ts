@@ -24,7 +24,7 @@ export interface AppConfig {
 
 export const FALLBACK_CONFIG: AppConfig = {
   appName: 'CodexPet Nest',
-  version: '0.1.12',
+  version: '0.2.0',
   bundleId: 'xyz.codexpet.nest',
   apiBaseUrl: 'https://codexpet.xyz',
   dataDirectory: '',

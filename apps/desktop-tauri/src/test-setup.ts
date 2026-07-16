@@ -24,7 +24,7 @@ Object.defineProperty(HTMLElement.prototype, 'hasPointerCapture', {
 
 const fallbackConfig = {
   appName: 'CodexPet Nest',
-  version: '0.1.12',
+  version: '0.2.0',
   platform: 'test',
   isDebug: true,
   apiBaseUrl: 'http://localhost:3000',

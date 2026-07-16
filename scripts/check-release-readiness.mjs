@@ -99,6 +99,7 @@ const windowsBuildWorkflow = windowsBuildWorkflowExists ? readText(windowsBuildW
 const variantBuildScriptPath = 'scripts/build-tauri-variants.mjs';
 const variantBuildScriptExists = existsSync(join(root, variantBuildScriptPath));
 const variantBuildScript = variantBuildScriptExists ? readText(variantBuildScriptPath) : '';
+const macPackagingSource = readText('scripts/package-macos-dmg.mjs');
 const localCompanionSource = readText(
   'apps/desktop-tauri/src/components/companion/LocalCompanionOverlay.tsx',
 );
@@ -107,6 +108,7 @@ const companionAnimationSource = readText(
 );
 
 check('product name', tauriConfig.productName === 'CodexPet Nest', tauriConfig.productName);
+check('release version', tauriConfig.version === '0.2.0', tauriConfig.version);
 check('bundle identifier', tauriConfig.identifier === 'xyz.codexpet.nest', tauriConfig.identifier);
 check(
   'Xia Yizhou product name',
@@ -230,7 +232,10 @@ check(
   'pet body drag suppresses accidental click dialogue',
   localCompanionSource.includes('suppressNextClickRef') &&
     localCompanionSource.includes('data-drag-visual') &&
-    localCompanionSource.includes("setCompanionAnimation('jumping')"),
+    localCompanionSource.includes("setDragVisualState('held')") &&
+    localCompanionSource.includes("setDragVisualState('right')") &&
+    localCompanionSource.includes("setDragVisualState('left')") &&
+    localCompanionSource.includes("startReaction('failed', 1_400)"),
   'LocalCompanionOverlay.tsx',
 );
 check(
@@ -318,6 +323,11 @@ check(
   packageJson.scripts?.['tauri:build'] === 'node scripts/build-tauri-variants.mjs',
   packageJson.scripts?.['tauri:build'],
 );
+check(
+  'root mac DMG build runs verified packaging script',
+  packageJson.scripts?.['tauri:build:mac:dmg'] === 'node scripts/package-macos-dmg.mjs',
+  packageJson.scripts?.['tauri:build:mac:dmg'],
+);
 check('variant build script exists', variantBuildScriptExists, variantBuildScriptPath);
 check(
   'variant build script builds Xia Yizhou package',
@@ -350,6 +360,19 @@ check(
   !windowsBuildWorkflow.includes('tauri.xia-yizhou.conf.json') &&
     !windowsBuildWorkflow.includes('tauri.shen-xinghui.conf.json'),
   windowsBuildWorkflowPath,
+);
+check(
+  'global cursor command registered',
+  tauriLibSource.includes('commands::debug::get_overlay_cursor_sample'),
+  'src-tauri/src/lib.rs',
+);
+check(
+  'mac packaging verifies both variants',
+  macPackagingSource.includes("'xia-yizhou'") &&
+    macPackagingSource.includes("'shen-xinghui'") &&
+    macPackagingSource.includes('hdiutil') &&
+    macPackagingSource.includes("'verify'"),
+  'scripts/package-macos-dmg.mjs',
 );
 
 for (const result of checks) {
