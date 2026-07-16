@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -35,6 +36,46 @@ function iconSetExists(icons) {
     Array.isArray(icons) &&
     icons.length === 5 &&
     icons.every((icon) => existsSync(join(root, 'apps/desktop-tauri/src-tauri', icon)))
+  );
+}
+
+const companionAssets = [
+  {
+    label: 'Xia Yizhou',
+    path: 'apps/desktop-tauri/public/pets/xia-yizhou/spritesheet.webp',
+    sha256: '32c0d8e5222b731c6ca1e6ae74e1bdd141dfdb249afd45a276655924c0d44e08',
+  },
+  {
+    label: 'Shen Xinghui',
+    path: 'apps/desktop-tauri/public/pets/shen-xinghui/spritesheet.webp',
+    sha256: 'e8f95384a3d3e3569a52bbf142993ff908cab20a15d0d65b41f23b7c5ff1c3b0',
+  },
+];
+
+function readVp8lDimensions(buffer) {
+  if (
+    buffer.toString('ascii', 0, 4) !== 'RIFF' ||
+    buffer.toString('ascii', 8, 12) !== 'WEBP' ||
+    buffer.toString('ascii', 12, 16) !== 'VP8L' ||
+    buffer[20] !== 0x2f
+  ) {
+    throw new Error('Expected a lossless VP8L WebP spritesheet');
+  }
+  const bits = buffer.readUInt32LE(21);
+  return {
+    width: (bits & 0x3fff) + 1,
+    height: ((bits >>> 14) & 0x3fff) + 1,
+  };
+}
+
+for (const asset of companionAssets) {
+  const buffer = readFileSync(join(root, asset.path));
+  const dimensions = readVp8lDimensions(buffer);
+  const hash = createHash('sha256').update(buffer).digest('hex');
+  check(
+    `${asset.label} v2 asset`,
+    dimensions.width === 1536 && dimensions.height === 2288 && hash === asset.sha256,
+    `${dimensions.width}x${dimensions.height} ${hash}`,
   );
 }
 
