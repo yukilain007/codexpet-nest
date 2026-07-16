@@ -49,6 +49,14 @@ fn get_fallback_data_dir(app_name: &str, _bundle_id: &str) -> String {
         .to_string()
 }
 
+#[cfg(not(target_os = "macos"))]
+fn get_fallback_data_dir(_app_name: &str, bundle_id: &str) -> String {
+    let home = dirs::home_dir().unwrap_or_default();
+    home.join(format!(".{}", bundle_id.replace('.', "-")))
+        .to_string_lossy()
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -81,12 +89,4 @@ mod tests {
         assert_eq!(shen.bundle_id, "xyz.codexpet.nest.shenxinghui");
         assert_ne!(xia.data_directory, shen.data_directory);
     }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn get_fallback_data_dir(_app_name: &str, bundle_id: &str) -> String {
-    let home = dirs::home_dir().unwrap_or_default();
-    home.join(format!(".{}", bundle_id.replace('.', "-")))
-        .to_string_lossy()
-        .to_string()
 }
