@@ -8,7 +8,7 @@
 
 最近补了两只可以独立运行的桌宠：夏以昼、沈星回。鼠标靠近会转头，点击、拖动、连续点击都有不同反应，放着不动还会自己做小动作。两个角色可以分开装，也可以同时运行。
 
-下载入口：  
+下载入口：
 https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0
 
 ### 手动安装
@@ -23,8 +23,8 @@ https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0
 
 “请帮我安装 CodexPet Nest v0.2.0 的夏以昼/沈星回。请先识别我的系统和 CPU 架构，只从上面的 GitHub Release 下载对应安装包，先核对 SHA256SUMS.txt，校验通过后再安装；遇到 Gatekeeper、SmartScreen 或管理员确认请暂停让我本人决定，不要关闭系统安全保护。”
 
-完整中文说明和 AI 安装口令：  
-https://github.com/yukilain007/codexpet-nest/blob/main/docs/INSTALL-zh-CN.md  
+完整中文说明和 AI 安装口令：
+https://github.com/yukilain007/codexpet-nest/blob/main/docs/INSTALL-zh-CN.md
 https://github.com/yukilain007/codexpet-nest/blob/main/docs/AI-INSTALL-zh-CN.md
 
 提醒：当前安装包未做 Apple 公证或商业代码签名，只从上面的 GitHub Release 下载并核对校验值。macOS 目前支持 Apple Silicon，Windows 目前支持 x64。

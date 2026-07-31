@@ -4,7 +4,7 @@
 
 ## 下载
 
-请从固定的 GitHub Release 下载：  
+请从固定的 GitHub Release 下载：
 https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0
 
 | 角色 | macOS（Apple Silicon） | Windows（x64，推荐） |
