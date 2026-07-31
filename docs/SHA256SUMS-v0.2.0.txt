@@ -1,0 +1,6 @@
+dfb192ef8db773ad0d059eb9f2c01152b23ca8c4cc61302780444466b4bbfff2  CodexPet.Nest.Shen.Xinghui_0.2.0_aarch64.dmg
+d6abf11a9e5e71b6c4500d6dc59223e9b84a157e32d9b1f161083f196c1d3de6  CodexPet.Nest.Xia.Yizhou_0.2.0_aarch64.dmg
+ba207a674799335c0a051bd1a2799f1b42db2f370d29d42c2de6260231dd1449  CodexPet.Nest.Shen.Xinghui_0.2.0_x64-setup.exe
+5dba7b6d3a791a89b1c605bde45ef79df5d05460a4b7a2969003187471bd42d7  CodexPet.Nest.Shen.Xinghui_0.2.0_x64_en-US.msi
+5edf0e8bf2b1bfd0ac9faca23014954824225722f8ccf53ccce8ef5f88f3e20d  CodexPet.Nest.Xia.Yizhou_0.2.0_x64-setup.exe
+e15a7951677d56bef462be0c1a5dde12e8c75eccf802c53e6a8e832a87b5adc5  CodexPet.Nest.Xia.Yizhou_0.2.0_x64_en-US.msi

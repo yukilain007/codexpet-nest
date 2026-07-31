@@ -12,7 +12,7 @@ https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0
 请帮我安装 CodexPet Nest v0.2.0 桌宠。
 
 先问我想安装“夏以昼”“沈星回”还是两个都安装，然后只读检查我的操作系统版本和 CPU 架构：
-- macOS 14+ Apple Silicon：夏以昼用 CodexPet Nest Xia Yizhou_0.2.0_aarch64.dmg，沈星回用 CodexPet Nest Shen Xinghui_0.2.0_aarch64.dmg。
+- macOS 14+ Apple Silicon：夏以昼用 CodexPet.Nest.Xia.Yizhou_0.2.0_aarch64.dmg，沈星回用 CodexPet.Nest.Shen.Xinghui_0.2.0_aarch64.dmg。
 - Windows 10/11 x64：优先使用对应角色名称后缀为 _x64-setup.exe 的文件，MSI 只作为备用。
 - 不支持的系统或架构请停止，不要猜测或下载其他版本。
 
@@ -37,10 +37,10 @@ https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0
 1. 唯一来源是 https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0，不得使用 Actions artifact、第三方网盘、镜像或 latest 链接。
 2. 先只读检测操作系统、版本和 CPU 架构；不符合 macOS 14+ Apple Silicon 或 Windows 10/11 x64 时停止。
 3. 按角色选择精确文件名，不要用模糊匹配：
-   - 夏以昼 macOS：CodexPet Nest Xia Yizhou_0.2.0_aarch64.dmg
-   - 沈星回 macOS：CodexPet Nest Shen Xinghui_0.2.0_aarch64.dmg
-   - 夏以昼 Windows：CodexPet Nest Xia Yizhou_0.2.0_x64-setup.exe；备用 CodexPet Nest Xia Yizhou_0.2.0_x64_en-US.msi
-   - 沈星回 Windows：CodexPet Nest Shen Xinghui_0.2.0_x64-setup.exe；备用 CodexPet Nest Shen Xinghui_0.2.0_x64_en-US.msi
+   - 夏以昼 macOS：CodexPet.Nest.Xia.Yizhou_0.2.0_aarch64.dmg
+   - 沈星回 macOS：CodexPet.Nest.Shen.Xinghui_0.2.0_aarch64.dmg
+   - 夏以昼 Windows：CodexPet.Nest.Xia.Yizhou_0.2.0_x64-setup.exe；备用 CodexPet.Nest.Xia.Yizhou_0.2.0_x64_en-US.msi
+   - 沈星回 Windows：CodexPet.Nest.Shen.Xinghui_0.2.0_x64-setup.exe；备用 CodexPet.Nest.Shen.Xinghui_0.2.0_x64_en-US.msi
 4. 同时下载 Release 中的 SHA256SUMS.txt。安装前计算所选安装包 SHA-256，与校验文件中同名条目逐字符比较；不一致、文件缺失或下载失败时停止。
 5. macOS 校验通过后才挂载 DMG，将正确的 .app 复制到 /Applications；Windows 校验通过后才打开 -setup.exe，只有 EXE 无法使用时才询问我是否改用 MSI。
 6. Gatekeeper、SmartScreen、未知发布者、UAC、管理员密码或任何安全确认都必须暂停并交给我。不要自动点击“仍要运行”，不要关闭安全工具，不要执行 xattr -cr 或类似绕过命令，不要修改 Defender/防火墙/白名单。

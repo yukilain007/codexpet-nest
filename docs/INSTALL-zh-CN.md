@@ -21,8 +21,8 @@ https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0
 
 | 角色 | macOS DMG | Windows 推荐 EXE | Windows 备用 MSI |
 | --- | --- | --- | --- |
-| 夏以昼 | CodexPet Nest Xia Yizhou_0.2.0_aarch64.dmg | CodexPet Nest Xia Yizhou_0.2.0_x64-setup.exe | CodexPet Nest Xia Yizhou_0.2.0_x64_en-US.msi |
-| 沈星回 | CodexPet Nest Shen Xinghui_0.2.0_aarch64.dmg | CodexPet Nest Shen Xinghui_0.2.0_x64-setup.exe | CodexPet Nest Shen Xinghui_0.2.0_x64_en-US.msi |
+| 夏以昼 | CodexPet.Nest.Xia.Yizhou_0.2.0_aarch64.dmg | CodexPet.Nest.Xia.Yizhou_0.2.0_x64-setup.exe | CodexPet.Nest.Xia.Yizhou_0.2.0_x64_en-US.msi |
+| 沈星回 | CodexPet.Nest.Shen.Xinghui_0.2.0_aarch64.dmg | CodexPet.Nest.Shen.Xinghui_0.2.0_x64-setup.exe | CodexPet.Nest.Shen.Xinghui_0.2.0_x64_en-US.msi |
 
 同一个角色不需要同时安装 EXE 和 MSI。下载页面里的 SHA256SUMS.txt 用来验证文件完整性。
 
@@ -70,13 +70,13 @@ _en-US.msi 是备用安装方式，适合 EXE 无法使用或需要系统管理�
 在包含安装包和 SHA256SUMS.txt 的下载目录中运行：
 
 ~~~bash
-shasum -a 256 "CodexPet Nest Xia Yizhou_0.2.0_aarch64.dmg"
+shasum -a 256 "CodexPet.Nest.Xia.Yizhou_0.2.0_aarch64.dmg"
 ~~~
 
 或：
 
 ~~~bash
-shasum -a 256 "CodexPet Nest Shen Xinghui_0.2.0_aarch64.dmg"
+shasum -a 256 "CodexPet.Nest.Shen.Xinghui_0.2.0_aarch64.dmg"
 ~~~
 
 将输出的 64 位十六进制值与 SHA256SUMS.txt 中同名文件的值比较。两者必须完全一致。
@@ -86,13 +86,13 @@ shasum -a 256 "CodexPet Nest Shen Xinghui_0.2.0_aarch64.dmg"
 在安装包所在目录运行：
 
 ~~~powershell
-Get-FileHash ".\CodexPet Nest Xia Yizhou_0.2.0_x64-setup.exe" -Algorithm SHA256
+Get-FileHash ".\CodexPet.Nest.Xia.Yizhou_0.2.0_x64-setup.exe" -Algorithm SHA256
 ~~~
 
 或：
 
 ~~~powershell
-Get-FileHash ".\CodexPet Nest Shen Xinghui_0.2.0_x64-setup.exe" -Algorithm SHA256
+Get-FileHash ".\CodexPet.Nest.Shen.Xinghui_0.2.0_x64-setup.exe" -Algorithm SHA256
 ~~~
 
 也可以把文件名替换为 MSI。值不一致时不要运行安装器，请重新从固定 Release 下载。

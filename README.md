@@ -9,8 +9,8 @@ https://github.com/yukilain007/codexpet-nest/releases/tag/v0.2.0
 
 | 角色 | macOS（Apple Silicon） | Windows（x64，推荐） |
 | --- | --- | --- |
-| 夏以昼 | CodexPet Nest Xia Yizhou_0.2.0_aarch64.dmg | CodexPet Nest Xia Yizhou_0.2.0_x64-setup.exe |
-| 沈星回 | CodexPet Nest Shen Xinghui_0.2.0_aarch64.dmg | CodexPet Nest Shen Xinghui_0.2.0_x64-setup.exe |
+| 夏以昼 | CodexPet.Nest.Xia.Yizhou_0.2.0_aarch64.dmg | CodexPet.Nest.Xia.Yizhou_0.2.0_x64-setup.exe |
+| 沈星回 | CodexPet.Nest.Shen.Xinghui_0.2.0_aarch64.dmg | CodexPet.Nest.Shen.Xinghui_0.2.0_x64-setup.exe |
 
 Windows 的 _en-US.msi 是同角色的备用安装包。macOS 版本要求 macOS 14 或更高，并且是 Apple Silicon（M1/M2/M3/M4 等）；Windows 版本要求 Windows 10/11 x64。
 
