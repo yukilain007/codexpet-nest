@@ -20,7 +20,7 @@ Windows 的 _en-US.msi 是同角色的备用安装包。macOS 版本要求 macOS
 2. 按自己的系统下载对应文件：macOS 选 .dmg，Windows 优先选 -setup.exe。
 3. 安装后启动应用；首次遇到系统安全提示时，先核对文件名和 SHA-256，再由你本人确认是否打开。
 
-完整步骤见 [中文安装说明](docs/INSTALL-zh-CN.md)。想让电脑助手代为下载和安装，可以复制 [AI 安装口令](docs/AI-INSTALL-zh-CN.md)。发帖时可直接使用 [小红书文案](docs/XIAOHONGSHU-POST-zh-CN.md)。
+完整步骤见 [中文安装说明](docs/INSTALL-zh-CN.md)。想让电脑助手代为下载和安装，可以复制 [AI 安装口令](docs/AI-INSTALL-zh-CN.md)。
 
 ## 有什么好玩
 
